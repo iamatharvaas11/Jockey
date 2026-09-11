@@ -1,0 +1,75 @@
+// JOCKY DSL Grammar (EBNF)
+%import common.WS
+%import common.ESCAPED_STRING -> STRING
+%import common.SIGNED_NUMBER  -> NUMBER
+%import common.CNAME -> ID
+%ignore WS
+%ignore COMMENT
+
+COMMENT: /\/\/[^\n]*/
+
+?start: program
+
+program: statement*
+
+?statement: target_stmt
+          | scan_stmt
+          | find_stmt
+          | build_stmt
+          | export_stmt
+          | set_stmt
+          | let_stmt
+          | filter_stmt
+          | if_stmt
+          | foreach_stmt
+
+target_stmt: "TARGET" TARGET_TYPE ";" | "TARGET" "REMOTE" STRING ";"
+TARGET_TYPE: "SYSTEM" | "ALL"
+
+scan_stmt: "SCAN" SCAN_TARGET [ "WHERE" condition ] ";"
+SCAN_TARGET: "PROCESSES" | "FILES" | "NETWORK" | "EVENTLOGS" | "REGISTRY" | "ALL"
+
+find_stmt: "FIND" FIND_TARGET ";"
+FIND_TARGET: "IOC" | "SUSPICIOUS" | "MALWARE" | "PERSISTENCE"
+
+build_stmt: "BUILD" BUILD_TARGET ";"
+BUILD_TARGET: "TIMELINE" | "CORRELATIONS" | "PROCESSGRAPH"
+
+export_stmt: "EXPORT" EXPORT_TARGET [ "TO" STRING ] ";"
+EXPORT_TARGET: "REPORT" | "EVIDENCE" | "TIMELINE"
+
+set_stmt: "SET" ID "=" expr ";"
+let_stmt: "LET" ID "=" expr ";"
+filter_stmt: "FILTER" condition ";"
+
+block: "{" statement* "}"
+if_stmt: "IF" condition "THEN" block [ "ELSE" block ]
+foreach_stmt: "FOREACH" ID "IN" SOURCE block
+SOURCE: "PROCESSES" | "FILES" | "NETWORK" | "EVENTLOGS" | "REGISTRY"
+
+condition: or_condition
+?or_condition: and_condition ( "OR" and_condition )*
+?and_condition: not_condition ( "AND" not_condition )*
+?not_condition: "NOT" not_condition -> not_cond
+              | comparison
+              | "(" condition ")"
+
+comparison: expr OPERATOR expr
+          | expr
+
+?expr: add_expr
+?add_expr: mul_expr ( ADD_OP mul_expr )*
+?mul_expr: atom ( MUL_OP atom )*
+ADD_OP: "+" | "-"
+MUL_OP: "*" | "/"
+
+?atom: property
+     | ID -> id_expr
+     | value
+     | "(" expr ")"
+
+property: ID "." ID
+value: STRING | NUMBER | BOOL
+
+BOOL: "true" | "false" | "TRUE" | "FALSE"
+OPERATOR: "==" | "!=" | ">=" | "<=" | ">" | "<" | "CONTAINS"
