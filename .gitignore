@@ -1,0 +1,66 @@
+# Python & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.build/
+*.egg
+
+# Virtual Environment & Secrets
+venv/
+env/
+.venv/
+.env
+.env.*
+!.env.example
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Database & Persistent State
+*.db
+*.sqlite
+*.sqlite3
+
+# JOCKY Runtime Outputs & Temporary Files
+storage/
+backend/storage/
+jocky_output/
+triage_output/
+output/
+scratch/
+tmp/
+*.ll
+*.obj
+.codex-finalizer/
+
+# Generated Forensic Reports & Local Test Dumps
+jocky_report.*
+full_investigation_report.*
+ioc_hunt_results.*
+network_report.*
+test_rep.*
+report.pdf
+alert.json
+high.json
+collected_evidence/
+
+# Testing & Coverage
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+.mypy_cache/
+
+# OS Artifacts & Logs
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
