@@ -135,7 +135,9 @@ async def settings_page(request: Request):
 def run_server():
     """CLI entrypoint to start the JOCKY server."""
     import uvicorn
-    uvicorn.run("backend.app.main:app", host="0.0.0.0", port=8000, reload=False)
+    host = os.environ.get("HOST", "127.0.0.1")
+    port = int(os.environ.get("PORT", "8000"))
+    uvicorn.run("backend.app.main:app", host=host, port=port, reload=False)
 
 
 if __name__ == "__main__":
