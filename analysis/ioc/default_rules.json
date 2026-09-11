@@ -1,0 +1,113 @@
+{
+  "rules": [
+    {
+      "rule_id": "IOC-HASH-001",
+      "name": "Known Threat File Hash Match",
+      "description": "Detects executable files or processes matching known threat hash signatures.",
+      "severity": "critical",
+      "enabled": true,
+      "evidence_types": ["process", "file"],
+      "conditions": {
+        "hash_match_fields": ["exe_hash", "sha256", "md5"],
+        "target_hashes": [
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "44d88612fea8a8f36de82e1278abb02f",
+          "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"
+        ]
+      },
+      "explanation": "File hash matched a threat intelligence indicator of compromise."
+    },
+    {
+      "rule_id": "IOC-PROC-001",
+      "name": "Suspicious LOLBin Command Line Execution",
+      "description": "Detects Living-off-the-Land binaries launched with encoded or download command line flags.",
+      "severity": "high",
+      "enabled": true,
+      "evidence_types": ["process"],
+      "conditions": {
+        "field": "cmdline",
+        "regex_patterns": [
+          "(?i)powershell.*-[eE](?:nc|ncodedcommand)?\\s+[A-Za-z0-9+/=]{10,}",
+          "(?i)certutil.*-(?:urlcache|split|decode)",
+          "(?i)bitsadmin.*/transfer",
+          "(?i)mshta.*https?://",
+          "(?i)wmic.*process\\s+call\\s+create",
+          "(?i)regsvr32.*(?:/i:https?|/s\\s+/u)"
+        ]
+      },
+      "explanation": "A standard system binary was invoked with arguments typical of stagers or payload downloads."
+    },
+    {
+      "rule_id": "IOC-PROC-002",
+      "name": "Suspicious Parent-Child Process Relationship",
+      "description": "Identifies document applications or web servers directly spawning interactive shells or interpreters.",
+      "severity": "high",
+      "enabled": true,
+      "evidence_types": ["process"],
+      "conditions": {
+        "parent_child_pairs": [
+          {"parent": "winword.exe", "child": "cmd.exe"},
+          {"parent": "winword.exe", "child": "powershell.exe"},
+          {"parent": "excel.exe", "child": "cmd.exe"},
+          {"parent": "excel.exe", "child": "powershell.exe"},
+          {"parent": "powerpnt.exe", "child": "cmd.exe"},
+          {"parent": "outlook.exe", "child": "cmd.exe"},
+          {"parent": "w3wp.exe", "child": "cmd.exe"},
+          {"parent": "nginx", "child": "bash"},
+          {"parent": "apache2", "child": "sh"}
+        ]
+      },
+      "explanation": "Interactive shell spawned by an office application or web server, indicative of macro or exploit execution."
+    },
+    {
+      "rule_id": "IOC-PROC-003",
+      "name": "Execution from Temporary Directory",
+      "description": "Detects processes running from world-writable or user temporary directories.",
+      "severity": "medium",
+      "enabled": true,
+      "evidence_types": ["process"],
+      "conditions": {
+        "field": "exe_path",
+        "regex_patterns": [
+          "(?i)[A-Z]:\\\\Users\\\\[^\\\\]+\\\\AppData\\\\Local\\\\Temp\\\\",
+          "^/tmp/[^/]+$",
+          "^/var/tmp/[^/]+$",
+          "^/dev/shm/[^/]+$"
+        ]
+      },
+      "explanation": "Binaries executing from temporary storage locations often indicate dropped malware or initial payloads."
+    },
+    {
+      "rule_id": "IOC-NET-001",
+      "name": "Suspicious Remote IP Address Connection",
+      "description": "Detects outbound network sockets connecting to known suspicious IP addresses.",
+      "severity": "high",
+      "enabled": true,
+      "evidence_types": ["network"],
+      "conditions": {
+        "field": "remote_ip",
+        "target_ips": [
+          "10.0.0.99",
+          "192.168.1.100",
+          "198.51.100.42",
+          "203.0.113.15"
+        ]
+      },
+      "explanation": "Outbound socket connection established to an address listed in known suspicious network indicators."
+    },
+    {
+      "rule_id": "IOC-EVT-001",
+      "name": "Failed Logon Anomaly",
+      "description": "Detects Windows Event 4625 (Failed Logon) or Linux authentication failures.",
+      "severity": "low",
+      "enabled": true,
+      "evidence_types": ["event"],
+      "conditions": {
+        "event_ids": [4625, 4740],
+        "message_regex": "(?i)failed password|authentication failure"
+      },
+      "explanation": "Authentication failure event captured, potentially representing brute-force or unauthorized logon attempts."
+    }
+  ]
+}
+
