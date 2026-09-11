@@ -1,0 +1,13 @@
+TARGET SYSTEM;
+
+SCAN PROCESSES;
+
+LET count = 0;
+FOREACH proc IN PROCESSES {
+    IF proc.pid > 0 THEN {
+        LET count = count + 1;
+    }
+}
+
+EXPORT REPORT TO "jocky_output/process_report.json";
+

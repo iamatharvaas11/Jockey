@@ -1,0 +1,23 @@
+// JOCKY Full Investigation Workflow
+// Comprehensive system forensic analysis
+
+TARGET SYSTEM;
+
+SET output_format = "JSON";
+SET severity_threshold = "MEDIUM";
+
+SCAN PROCESSES;
+SCAN FILES;
+SCAN NETWORK;
+SCAN EVENTLOGS;
+SCAN REGISTRY;
+
+FIND IOC;
+FIND SUSPICIOUS;
+FIND PERSISTENCE;
+
+BUILD TIMELINE;
+BUILD CORRELATIONS;
+BUILD PROCESSGRAPH;
+
+EXPORT REPORT TO "full_investigation_report";

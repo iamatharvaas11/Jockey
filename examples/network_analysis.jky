@@ -1,0 +1,14 @@
+// JOCKY Network Forensic Analysis
+// Focus on network connections and related processes
+
+TARGET SYSTEM;
+
+SCAN NETWORK;
+SCAN PROCESSES;
+
+FIND IOC;
+
+BUILD CORRELATIONS;
+BUILD TIMELINE;
+
+EXPORT REPORT TO "network_report";

@@ -1,0 +1,20 @@
+// JOCKY IOC Hunting Script
+// Targeted search for indicators of compromise
+
+TARGET SYSTEM;
+
+SCAN PROCESSES;
+SCAN FILES;
+SCAN NETWORK;
+SCAN REGISTRY;
+
+FIND IOC;
+FIND MALWARE;
+FIND SUSPICIOUS;
+FIND PERSISTENCE;
+
+BUILD TIMELINE;
+BUILD CORRELATIONS;
+
+EXPORT REPORT TO "ioc_hunt_results";
+EXPORT EVIDENCE TO "collected_evidence/";

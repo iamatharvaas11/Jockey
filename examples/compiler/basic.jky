@@ -1,0 +1,12 @@
+// Basic JOCKY compiler test program
+TARGET SYSTEM;
+
+LET x = 10;
+LET y = x + 5;
+
+IF y > 12 THEN {
+    EXPORT REPORT TO "high.json";
+} ELSE {
+    SCAN PROCESSES;
+}
+

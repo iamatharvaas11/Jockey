@@ -1,0 +1,13 @@
+// JOCKY Basic Forensic Scan
+// Performs quick system triage
+
+TARGET SYSTEM;
+
+SCAN PROCESSES;
+SCAN NETWORK;
+
+FIND IOC;
+
+BUILD TIMELINE;
+
+EXPORT REPORT;
