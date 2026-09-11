@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}JOCKY // Forensic Super-Timeline{% endblock %}
+{% block header_title %}UNIFIED FORENSIC TIMELINE{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6 max-w-7xl mx-auto overflow-y-auto h-full pb-20 select-text"
+     x-data="{
+         events: [],
+         investigations: [],
+         selectedInvestigation: '',
+         loading: true,
+         error: null,
+         search: '',
+         sourceFilter: 'ALL',
+         severityFilter: 'ALL',
+
+         getAuthHeaders() {
+             const headers = { 'Content-Type': 'application/json' };
+             const token = localStorage.getItem('jocky_token');
+             if (token) headers['Authorization'] = `Bearer ${token}`;
+             return headers;
+         },
+
+         async initData() {
+             await this.fetchInvestigations();
+             await this.fetchTimeline();
+         },
+
+         async fetchInvestigations() {
+             try {
+                 const res = await fetch('/api/v1/investigations', { headers: this.getAuthHeaders() });
+                 if (res.ok) {
+                     this.investigations = await res.json();
+                 }
+             } catch (e) {
+                 console.warn('Could not load investigations list:', e);
+             }
+         },
+
+         async fetchTimeline() {
+             this.loading = true;
+             this.error = null;
+             try {
+                 let url = '/api/v1/timeline?limit=300';
+                 if (this.selectedInvestigation) {
+                     url += `&investigation_id=${encodeURIComponent(this.selectedInvestigation)}`;
+                 }
+                 if (this.sourceFilter !== 'ALL') {
+                     url += `&source=${encodeURIComponent(this.sourceFilter)}`;
+                 }
+                 if (this.severityFilter !== 'ALL') {
+                     url += `&severity=${encodeURIComponent(this.severityFilter)}`;
+                 }
+
+                 const res = await fetch(url, { headers: this.getAuthHeaders() });
+                 if (res.status === 401) {
+                     throw new Error('Authentication required (401). Please log in.');
+                 }
+                 if (!res.ok) {
+                     const errData = await res.json().catch(() => ({}));
+                     throw new Error(errData.detail || `Unable to load timeline (HTTP ${res.status})`);
+                 }
+                 this.events = await res.json();
+             } catch (err) {
+                 this.error = err.message;
+             } finally {
+                 this.loading = false;
+             }
+         },
+
+         filteredEvents() {
+             return this.events.filter(e => {
+                 const s = this.search.toLowerCase();
+                 return !s ||
+                     (e.title && e.title.toLowerCase().includes(s)) ||
+                     (e.description && e.description.toLowerCase().includes(s)) ||
+                     (e.event_type && e.event_type.toLowerCase().includes(s)) ||
+                     (e.event_source && e.event_source.toLowerCase().includes(s));
+             });
+         }
+     }"
+     x-init="initData()">
+
+    <!-- Header Actions -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="font-hud font-bold text-xl text-white tracking-wide">CHRONOLOGICAL SUPER-TIMELINE</h1>
+            <p class="text-xs font-data text-slate-400 mt-0.5">Sequenced events across processes, network sockets, file activity, and telemetry</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button @click="fetchTimeline()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-data rounded border border-cyber-border text-slate-300 flex items-center gap-2">
+                <i class="fa-solid fa-arrows-rotate" :class="{ 'fa-spin': loading }"></i>
+                <span>Refresh Timeline</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter & Scope Controls -->
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-cyber-dark/60 p-4 rounded border border-cyber-border/80">
+        <div>
+            <label class="block text-[11px] font-data text-slate-400 uppercase mb-1">Investigation Scope</label>
+            <select x-model="selectedInvestigation" @change="fetchTimeline()" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyber-cyan font-mono">
+                <option value="">[All Investigations / Master Timeline]</option>
+                <template x-for="inv in investigations" :key="inv.id">
+                    <option :value="inv.id" x-text="`${inv.case_number}: ${inv.title}`"></option>
+                </template>
+            </select>
+        </div>
+        <div>
+            <label class="block text-[11px] font-data text-slate-400 uppercase mb-1">Search Timeline</label>
+            <input type="text" x-model="search" placeholder="Filter title, description..." class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyber-cyan font-mono">
+        </div>
+        <div>
+            <label class="block text-[11px] font-data text-slate-400 uppercase mb-1">Artifact Source</label>
+            <select x-model="sourceFilter" @change="fetchTimeline()" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyber-cyan font-mono">
+                <option value="ALL">All Sources</option>
+                <option value="process">PROCESS</option>
+                <option value="network">NETWORK</option>
+                <option value="file">FILE</option>
+                <option value="event">EVENT</option>
+                <option value="registry">REGISTRY</option>
+            </select>
+        </div>
+        <div class="flex items-end">
+            <div class="text-xs font-data text-slate-400">
+                <span>Loaded Events:</span> <span class="font-bold text-cyber-cyan" x-text="filteredEvents().length">0</span> / <span x-text="events.length">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div x-show="loading" class="text-center py-16">
+        <i class="fa-solid fa-circle-notch fa-spin text-3xl text-cyber-cyan mb-3"></i>
+        <div class="text-xs font-data text-slate-400">Sequencing chronological timeline...</div>
+    </div>
+
+    <!-- Error State -->
+    <div x-show="error && !loading" class="p-4 bg-red-950/40 border border-red-500/50 rounded text-red-300 text-xs font-data">
+        <div class="font-bold mb-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Timeline Query Error</div>
+        <div x-text="error"></div>
+    </div>
+
+    <!-- Empty State -->
+    <div x-show="!loading && !error && filteredEvents().length === 0" class="text-center py-16 bg-cyber-dark/40 rounded border border-cyber-border/40">
+        <i class="fa-solid fa-clock-rotate-left text-4xl text-slate-600 mb-3"></i>
+        <div class="text-sm font-hud text-slate-400">No Timeline Events Recorded</div>
+        <p class="text-xs font-data text-slate-500 mt-1">Chronological events will appear here once forensic artifacts are processed.</p>
+    </div>
+
+    <!-- Timeline List -->
+    <div x-show="!loading && !error && filteredEvents().length > 0" class="relative border-l border-cyber-border/80 ml-4 space-y-6 pl-6">
+        <template x-for="event in filteredEvents()" :key="event.id">
+            <div class="relative group">
+                <!-- Dot Indicator -->
+                <div class="absolute -left-[31px] top-1.5 w-3 h-3 rounded-full border-2 border-cyber-dark"
+                     :class="{
+                         'bg-red-500 ring-4 ring-red-500/20': event.severity === 'CRITICAL' || event.severity === 'HIGH',
+                         'bg-amber-500 ring-4 ring-amber-500/20': event.severity === 'MEDIUM',
+                         'bg-cyber-cyan ring-4 ring-cyan-500/20': event.severity === 'LOW' || event.severity === 'INFO'
+                     }"></div>
+
+                <div class="bg-cyber-dark/80 border border-cyber-border/80 rounded p-4 group-hover:border-cyber-cyan/50 transition-colors">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1.5">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase font-mono tracking-wider"
+                                  :class="{
+                                      'bg-cyan-950 text-cyan-400 border border-cyan-500/30': event.event_source === 'process',
+                                      'bg-blue-950 text-blue-400 border border-blue-500/30': event.event_source === 'network',
+                                      'bg-purple-950 text-purple-400 border border-purple-500/30': event.event_source === 'file',
+                                      'bg-slate-800 text-slate-300 border border-slate-700': event.event_source !== 'process' && event.event_source !== 'network' && event.event_source !== 'file'
+                                  }"
+                                  x-text="event.event_source || 'SYSTEM'">
+                            </span>
+                            <span class="text-xs font-mono font-bold text-white" x-text="event.title"></span>
+                            <span x-show="event.raw_payload && event.raw_payload.is_estimated" class="px-1.5 py-0.2 text-[8px] bg-amber-950 text-amber-400 rounded border border-amber-500/30 font-mono">
+                                [ESTIMATED]
+                            </span>
+                        </div>
+                        <div class="text-xs font-mono text-slate-400" x-text="event.timestamp ? event.timestamp.substring(0, 19).replace('T', ' ') + ' UTC' : 'N/A'"></div>
+                    </div>
+
+                    <p class="text-xs font-data text-slate-300 mt-1" x-text="event.description"></p>
+
+                    <div x-show="event.raw_payload && event.raw_payload.evidence_id" class="mt-2 text-[10px] font-mono text-slate-500">
+                        <span>CITED EVIDENCE:</span> <span class="text-cyber-cyan" x-text="event.raw_payload ? event.raw_payload.evidence_id : ''"></span>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+</div>
+{% endblock %}

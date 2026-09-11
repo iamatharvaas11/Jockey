@@ -1,0 +1,520 @@
+{% extends "base.html" %}
+
+{% block title %}JOCKY // Case Workspace{% endblock %}
+
+{% block header_title %}
+<div class="flex items-center gap-3">
+    <a href="/investigations" class="text-slate-500 hover:text-cyber-cyan transition-colors">
+        <i class="fa-solid fa-arrow-left"></i>
+    </a>
+    <span class="text-slate-500 font-data">DOSSIER //</span>
+    <span class="text-cyber-cyan font-mono font-bold text-sm tracking-wider" x-text="data.case_number || 'CAS-ACTIVE'"></span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div x-data="investigationDetail()" x-init="initData()" class="flex flex-col h-full gap-5">
+    
+    <!-- Top Classified Header Banner -->
+    <div class="hud-panel hud-corner-brackets rounded p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-cyber-dark/80">
+        <div>
+            <div class="flex flex-wrap items-center gap-3 mb-1.5">
+                <span class="hud-telemetry-tag text-[9px]"><i class="fa-solid fa-folder-closed"></i> CLASSIFIED CASE</span>
+                <h2 class="text-xl font-hud font-bold text-white tracking-wide uppercase" x-text="data.title">Loading Incident...</h2>
+                <span class="badge-cyber" :class="window.utils.getStatusBadge(data.status)" x-text="data.status"></span>
+                <span class="badge-cyber" :class="window.utils.getSeverityBadge(data.severity)" x-text="data.severity"></span>
+            </div>
+            <p class="text-slate-400 text-xs font-data">
+                RECORDED: <span class="text-slate-300 font-mono" x-text="window.utils.formatDate(data.created_at)"></span> &bull; 
+                LEAD INVESTIGATOR: <span class="text-cyber-cyan font-mono" x-text="data.lead_investigator"></span> &bull; 
+                HOST IDENTIFIER: <span class="text-slate-300 font-mono">SQL_PROD_01 [WIN-64]</span>
+            </p>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap items-center gap-2.5 font-hud">
+            <button @click="generateReport()" class="cyber-btn cyber-btn-cyan text-xs py-2 px-3.5">
+                <i class="fa-solid fa-file-shield mr-1"></i> EXPORT REPORT
+            </button>
+            
+            <div class="relative" x-data="{ open: false }">
+                <button @click="open = !open" @click.away="open = false" 
+                        class="cyber-btn cyber-btn-dark text-xs py-2 px-3.5 flex items-center gap-2">
+                    <span>STATUS: <span class="text-white" x-text="data.status"></span></span>
+                    <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                </button>
+                <div x-show="open" 
+                     x-transition
+                     class="absolute right-0 mt-1 w-36 hud-panel bg-slate-950 border border-cyber-border rounded shadow-2xl z-20 font-data text-xs py-1" 
+                     style="display: none;">
+                    <button @click="updateStatus('OPEN'); open=false" class="w-full text-left px-3 py-2 text-cyber-cyan hover:bg-slate-900 font-bold">STATUS: OPEN</button>
+                    <button @click="updateStatus('ACTIVE'); open=false" class="w-full text-left px-3 py-2 text-cyber-green hover:bg-slate-900 font-bold">STATUS: ACTIVE</button>
+                    <button @click="updateStatus('CONTAINED'); open=false" class="w-full text-left px-3 py-2 text-amber-400 hover:bg-slate-900 font-bold">STATUS: CONTAINED</button>
+                    <button @click="updateStatus('CLOSED'); open=false" class="w-full text-left px-3 py-2 text-slate-500 hover:bg-slate-900 font-bold">STATUS: CLOSED</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Tabbed Investigation Workspace -->
+    <div class="hud-panel hud-corner-brackets rounded flex flex-col flex-1 overflow-hidden">
+        
+        <!-- Tab Navigation Bar -->
+        <div class="flex border-b border-slate-800 bg-cyber-dark/60 overflow-x-auto font-hud text-xs font-bold uppercase tracking-wider">
+            <template x-for="tab in tabs" :key="tab.id">
+                <button @click="activeTab = tab.id" 
+                        class="px-5 py-3.5 whitespace-nowrap transition-all relative flex items-center gap-2"
+                        :class="activeTab === tab.id ? 'text-cyber-cyan bg-slate-900/60 shadow-[inset_0_0_12px_rgba(0,240,255,0.1)]' : 'text-slate-400 hover:text-white hover:bg-slate-900/30'">
+                    <i :class="tab.icon"></i>
+                    <span x-text="tab.label"></span>
+                    <div x-show="activeTab === tab.id" class="absolute bottom-0 left-0 w-full h-[2px] bg-cyber-cyan shadow-[0_0_8px_var(--neon-cyan)]"></div>
+                </button>
+            </template>
+        </div>
+
+        <!-- Tab Contents Viewport -->
+        <div class="flex-1 overflow-y-auto p-6 relative">
+            
+            <!-- 1. OVERVIEW TAB -->
+            <div x-show="activeTab === 'overview'" class="space-y-6">
+                
+                <!-- Telemetry 4-Metric Counters -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 perspective-container">
+                    <div class="hud-panel hud-corner-brackets cyber-card-3d p-4 rounded text-center border-l-2 border-l-cyber-cyan">
+                        <div class="hud-telemetry-tag mb-1 text-[8px]">ACTIVE HOSTS</div>
+                        <div class="text-3xl font-data font-bold text-white mb-1">03</div>
+                        <div class="text-[10px] font-data text-slate-500 uppercase">ENDPOINTS MONITORED</div>
+                    </div>
+                    <div class="hud-panel hud-corner-brackets cyber-card-3d p-4 rounded text-center border-l-2 border-l-cyber-green">
+                        <div class="hud-telemetry-tag mb-1 text-[8px] text-cyber-green border-cyber-green/30">INGESTION</div>
+                        <div class="text-3xl font-data font-bold text-cyber-green mb-1" x-text="data.artifacts ? data.artifacts.length : 0">0</div>
+                        <div class="text-[10px] font-data text-slate-500 uppercase">FORENSIC ARTIFACTS</div>
+                    </div>
+                    <div class="hud-panel hud-corner-brackets cyber-card-3d p-4 rounded text-center border-l-2 border-l-cyber-red">
+                        <div class="hud-telemetry-tag mb-1 text-[8px] text-cyber-red border-cyber-red/30">THREATS</div>
+                        <div class="text-3xl font-data font-bold text-cyber-red mb-1 glow-red" x-text="data.iocs ? data.iocs.length : 0">0</div>
+                        <div class="text-[10px] font-data text-slate-500 uppercase">BLACK-BOX IOCS</div>
+                    </div>
+                    <div class="hud-panel hud-corner-brackets cyber-card-3d p-4 rounded text-center border-l-2 border-l-cyber-blue">
+                        <div class="hud-telemetry-tag mb-1 text-[8px]">SUPER-TIMELINE</div>
+                        <div class="text-3xl font-data font-bold text-white mb-1" x-text="data.timeline ? data.timeline.length : 0">0</div>
+                        <div class="text-[10px] font-data text-slate-500 uppercase">NORMALIZED EVENTS</div>
+                    </div>
+                </div>
+                
+                <!-- Incident Dossier Details -->
+                <div class="hud-panel p-5 rounded">
+                    <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+                        <h3 class="font-hud font-bold text-xs uppercase tracking-wider text-white">OPERATIONAL INCIDENT BRIEFING</h3>
+                        <span class="hud-telemetry-tag text-[9px]">ENCRYPTED SUMMARY</span>
+                    </div>
+                    <div class="font-data text-slate-300 text-xs leading-relaxed" x-text="data.description"></div>
+                </div>
+
+                <!-- Live System Information -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="hud-panel p-4 rounded font-data text-xs space-y-2">
+                        <div class="font-hud font-bold text-cyber-cyan text-xs uppercase tracking-wider mb-2">TARGET HOST ENVIRONMENT</div>
+                        <div class="flex justify-between py-1 border-b border-slate-800/60"><span class="text-slate-500">HOSTNAME:</span> <span class="text-white font-mono">SQL_PROD_01</span></div>
+                        <div class="flex justify-between py-1 border-b border-slate-800/60"><span class="text-slate-500">OS ARCHITECTURE:</span> <span class="text-cyber-green font-mono">Windows 11 Enterprise (x64)</span></div>
+                        <div class="flex justify-between py-1 border-b border-slate-800/60"><span class="text-slate-500">IP ADDRESS:</span> <span class="text-cyber-cyan font-mono">10.0.4.18 // STATIC</span></div>
+                        <div class="flex justify-between py-1"><span class="text-slate-500">AGENT STATUS:</span> <span class="text-cyber-green font-bold">ISOLATED / SENSORS ACTIVE</span></div>
+                    </div>
+
+                    <div class="hud-panel p-4 rounded font-data text-xs space-y-2">
+                        <div class="font-hud font-bold text-cyber-cyan text-xs uppercase tracking-wider mb-2">CHAIN OF CUSTODY VERIFICATION</div>
+                        <div class="flex justify-between py-1 border-b border-slate-800/60"><span class="text-slate-500">MANIFEST HASH:</span> <span class="text-cyber-cyan font-mono truncate max-w-[200px]">SHA256: 7f83b1657ff1fc53b...</span></div>
+                        <div class="flex justify-between py-1 border-b border-slate-800/60"><span class="text-slate-500">SIGNING ALGO:</span> <span class="text-white font-mono">ECDSA-P256 / SHA-256</span></div>
+                        <div class="flex justify-between py-1 border-b border-slate-800/60"><span class="text-slate-500">VERIFICATION STATE:</span> <span class="text-cyber-green font-bold"><i class="fa-solid fa-check mr-1"></i> UNMODIFIED & AUDITED</span></div>
+                        <div class="flex justify-between py-1"><span class="text-slate-500">STANDARD COMPLIANCE:</span> <span class="text-slate-300 font-mono">NIST SP 800-86</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. JOCKY SCRIPT IDE TAB -->
+            <div x-show="activeTab === 'editor'" class="h-full flex flex-col gap-4">
+                <div class="flex flex-wrap justify-between items-center bg-slate-950 p-2.5 rounded border border-slate-800">
+                    <div class="flex items-center gap-3">
+                        <select @change="loadCaseExample($event.target.value)" 
+                                class="cyber-input text-xs rounded px-3 py-1.5 text-slate-200 bg-slate-900 font-data">
+                            <option value="">Load Case Playbook Template...</option>
+                            <option value="basic_scan">Basic Endpoint Scan</option>
+                            <option value="full_investigation">Full Multi-Vector Sweep</option>
+                            <option value="network_analysis">Network Sockets Analysis</option>
+                            <option value="ioc_hunt">IOC Signature Hunting</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button @click="compile()" :disabled="isEditorCompiling" class="cyber-btn cyber-btn-cyan text-xs py-1.5 px-3.5">
+                            <span x-show="!isEditorCompiling"><i class="fa-solid fa-microchip mr-1"></i> Compile to IR</span>
+                            <span x-show="isEditorCompiling" style="display: none;"><i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Compiling...</span>
+                        </button>
+                        <button @click="execute()" :disabled="isEditorExecuting" class="cyber-btn text-xs py-1.5 px-4">
+                            <span x-show="!isEditorExecuting"><i class="fa-solid fa-play mr-1"></i> Execute Script</span>
+                            <span x-show="isEditorExecuting" style="display: none;"><i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Running...</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-[420px]">
+                    <div class="hud-panel rounded flex flex-col overflow-hidden bg-[#020408]">
+                        <div class="px-3 py-1.5 bg-slate-950 border-b border-slate-800 text-[11px] font-data text-slate-500 flex justify-between">
+                            <span>CASE SCRIPT EDITOR</span>
+                            <span class="text-cyber-green">[CTRL+ENTER]</span>
+                        </div>
+                        <textarea x-model="editorCode" 
+                                  @keydown="if ($event.ctrlKey && $event.key === 'Enter') { $event.preventDefault(); execute(); }"
+                                  class="code-editor flex-1 w-full border-none focus:ring-0 text-xs p-3 font-mono text-slate-200 bg-transparent resize-none focus:outline-none" spellcheck="false"></textarea>
+                    </div>
+                    
+                    <div class="hud-panel rounded flex flex-col overflow-hidden bg-[#020408]">
+                        <div class="flex bg-slate-950 border-b border-slate-800 text-[11px] font-hud font-bold">
+                            <button type="button" @click="editorTab = 'ir'" :class="editorTab === 'ir' ? 'text-cyber-cyan border-b-2 border-cyber-cyan bg-slate-900' : 'text-slate-500'" class="px-3 py-1.5 cursor-pointer">LLVM IR</button>
+                            <button type="button" @click="editorTab = 'ast'" :class="editorTab === 'ast' ? 'text-cyber-cyan border-b-2 border-cyber-cyan bg-slate-900' : 'text-slate-500'" class="px-3 py-1.5 cursor-pointer">AST TREE</button>
+                            <button type="button" @click="editorTab = 'results'" :class="editorTab === 'results' ? 'text-cyber-green border-b-2 border-cyber-green bg-slate-900' : 'text-slate-500'" class="px-3 py-1.5 cursor-pointer">EXECUTION</button>
+                        </div>
+                        
+                        <div class="output-panel flex-1 p-3 overflow-auto font-data text-xs">
+                            <div x-show="editorTab === 'ir'">
+                                <pre class="text-xs font-mono text-slate-300 whitespace-pre-wrap" x-text="editorIrOutput || '; Click Compile to IR to see LLVM IR'"></pre>
+                            </div>
+                            
+                            <div x-show="editorTab === 'ast'" style="display: none;">
+                                <pre class="text-xs font-mono text-cyber-cyan whitespace-pre-wrap" x-text="editorAstOutput || '// Click Compile to see Abstract Syntax Tree'"></pre>
+                            </div>
+                            
+                            <div x-show="editorTab === 'results'" class="space-y-1.5" style="display: none;">
+                                <template x-for="log in editorExecResults" :key="log.message">
+                                    <div class="flex items-start gap-2 p-1.5 rounded bg-slate-950/80 font-mono text-xs">
+                                        <span :class="{'text-cyber-green font-bold': log.type === 'success', 'text-cyber-red font-bold': log.type === 'error', 'text-amber-400': log.type === 'warning', 'text-cyber-cyan': log.type === 'info'}" class="flex-1" x-text="log.message"></span>
+                                    </div>
+                                </template>
+                                <div x-show="!editorExecResults || editorExecResults.length === 0" class="text-slate-600 text-center py-8">
+                                    Click "Execute Script" to run live sensors
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. EVIDENCE ARTIFACTS TAB -->
+            <div x-show="activeTab === 'artifacts'" class="space-y-4">
+                <!-- Dropzone -->
+                <div class="p-8 border-2 border-dashed border-cyber-border hover:border-cyber-cyan rounded-lg bg-cyber-dark/50 flex flex-col items-center justify-center text-center transition-all cursor-pointer group">
+                    <div class="w-12 h-12 rounded bg-cyan-950/40 border border-cyber-cyan/40 flex items-center justify-center text-cyber-cyan mb-3 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+                    </div>
+                    <p class="text-white font-hud font-bold text-sm tracking-wider uppercase">DRAG & DROP EVIDENCE ARTIFACTS</p>
+                    <p class="text-xs font-data text-slate-500 mt-1">Accepts Memory Dumps (.raw, .dmp), PCAP Captures, Registry Hives, EVTX event log exports</p>
+                </div>
+                
+                <div class="hud-panel rounded overflow-hidden">
+                    <div class="px-4 py-2.5 bg-slate-950 border-b border-slate-800 text-xs font-data text-slate-400 flex justify-between items-center">
+                        <span class="font-hud font-bold text-white uppercase">INGESTED FORENSIC ARTIFACT ARCHIVE</span>
+                        <span class="text-cyber-green font-mono">INTEGRITY: SHA-256 PRESERVED</span>
+                    </div>
+                    <table class="cyber-table">
+                        <thead>
+                            <tr>
+                                <th>FILE IDENTIFIER</th>
+                                <th>CLASS</th>
+                                <th>SIZE</th>
+                                <th>CRYPTOGRAPHIC SHA-256 HASH</th>
+                                <th class="text-right">ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800 font-data">
+                            <template x-for="art in data.artifacts" :key="art.id">
+                                <tr class="group">
+                                    <td class="text-white font-medium flex items-center gap-2">
+                                        <i class="fa-solid fa-file-shield text-cyber-cyan text-xs"></i>
+                                        <span class="font-mono text-xs" x-text="art.filename"></span>
+                                    </td>
+                                    <td><span class="badge-cyber badge-blue" x-text="art.type"></span></td>
+                                    <td class="text-slate-400 text-xs font-mono" x-text="window.utils.formatBytes(art.size)"></td>
+                                    <td>
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-mono text-xs text-cyber-cyan truncate max-w-[220px]" x-text="art.hash" :title="art.hash"></span>
+                                            <i class="fa-solid fa-certificate text-cyber-green text-xs" title="Cryptographically Validated"></i>
+                                        </div>
+                                    </td>
+                                    <td class="text-right">
+                                        <button class="text-slate-400 hover:text-cyber-cyan mr-3"><i class="fa-solid fa-download"></i></button>
+                                        <button class="text-slate-400 hover:text-cyber-red"><i class="fa-solid fa-trash-can"></i></button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 4. TIMELINE TAB -->
+            <div x-show="activeTab === 'timeline'" class="space-y-4">
+                <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                    <div class="flex items-center gap-2">
+                        <span class="beacon-pulse beacon-cyan"></span>
+                        <h4 class="font-hud font-bold text-xs uppercase tracking-wider text-white">INTEGRATED CHRONOLOGICAL SUPER-TIMELINE</h4>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs font-data">
+                        <span class="px-2 py-0.5 bg-slate-900 border border-slate-800 text-slate-400 rounded">SOURCES: SYSTEM, PROCESS, EDR, FIREWALL</span>
+                    </div>
+                </div>
+
+                <div class="timeline-container mt-4">
+                    <template x-for="event in data.timeline" :key="event.id">
+                        <div class="timeline-entry" :class="event.severity === 'CRITICAL' ? 'critical' : ''">
+                            <div class="hud-panel p-4 rounded shadow-md hover:border-cyber-cyan/50 transition-colors">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div class="flex items-center gap-2.5 font-data">
+                                        <span class="text-xs font-mono text-cyber-cyan font-bold" x-text="new Date(event.timestamp).toUTCString()"></span>
+                                        <span class="badge-cyber" :class="window.utils.getSeverityBadge(event.severity)" x-text="event.severity"></span>
+                                        <span class="px-1.5 py-0.5 bg-slate-900 border border-slate-700 text-slate-300 rounded text-[10px] font-mono" x-text="event.source"></span>
+                                    </div>
+                                    <button class="text-slate-500 hover:text-cyber-cyan"><i class="fa-solid fa-thumbtack text-xs"></i></button>
+                                </div>
+                                <h4 class="text-white font-hud font-bold text-xs uppercase tracking-wide mb-1" x-text="event.title"></h4>
+                                <p class="text-slate-300 font-data text-xs leading-relaxed" x-text="event.description"></p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- 5. IOCS TAB -->
+            <div x-show="activeTab === 'iocs'" class="space-y-4">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-2 font-hud text-xs font-bold text-white uppercase tracking-wider">
+                        <i class="fa-solid fa-crosshairs text-cyber-red"></i>
+                        <span>IDENTIFIED INDICATORS OF COMPROMISE (IOC)</span>
+                    </div>
+                    <button class="cyber-btn cyber-btn-cyan text-xs py-1.5 px-3">
+                        <i class="fa-solid fa-plus mr-1"></i> ADD SIGNATURE
+                    </button>
+                </div>
+
+                <div class="hud-panel rounded overflow-hidden">
+                    <table class="cyber-table">
+                        <thead>
+                            <tr>
+                                <th>INDICATOR TYPE</th>
+                                <th>SIGNATURE VALUE</th>
+                                <th>THREAT SEVERITY</th>
+                                <th>FORENSIC ASSESSMENT</th>
+                                <th class="text-right">ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800 font-data">
+                            <template x-for="ioc in data.iocs" :key="ioc.id">
+                                <tr class="group">
+                                    <td>
+                                        <span class="badge-cyber badge-blue" x-text="ioc.type"></span>
+                                    </td>
+                                    <td class="font-mono text-cyber-cyan font-bold select-all" x-text="ioc.value"></td>
+                                    <td>
+                                        <span class="badge-cyber" :class="window.utils.getSeverityBadge(ioc.threat_level)" x-text="ioc.threat_level"></span>
+                                    </td>
+                                    <td class="text-slate-300 font-sans text-xs" x-text="ioc.description"></td>
+                                    <td class="text-right">
+                                        <button @click="window.utils.copyToClipboard(ioc.value)" class="text-slate-400 hover:text-cyber-cyan mr-3" title="Copy Signature">
+                                            <i class="fa-regular fa-copy"></i>
+                                        </button>
+                                        <button class="text-slate-500 hover:text-cyber-red"><i class="fa-solid fa-trash-can"></i></button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 6. CORRELATIONS & PROCESS GRAPH TAB -->
+            <div x-show="activeTab === 'correlations'" class="space-y-4">
+                <div class="hud-panel p-6 rounded">
+                    <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-diagram-project text-cyber-green text-sm"></i>
+                            <h4 class="font-hud font-bold text-xs uppercase tracking-wider text-white">RECONSTRUCTED PROCESS EXECUTION GRAPH</h4>
+                        </div>
+                        <span class="hud-telemetry-tag text-[9px] text-cyber-red border-cyber-red/30 bg-red-950/20">
+                            [!] SUSPICIOUS PARENT-CHILD CHAIN FLAGGED
+                        </span>
+                    </div>
+
+                    <!-- Tactical Process Tree Graph -->
+                    <div class="process-tree max-w-2xl bg-slate-950 p-5 rounded border border-cyber-border/70 font-data text-xs">
+                        <ul class="text-slate-300 space-y-1">
+                            <li>
+                                <i class="fa-solid fa-microchip text-slate-500 mr-2"></i> 
+                                <span class="font-bold text-white">wininit.exe</span> <span class="text-slate-500 font-mono">[PID: 580]</span>
+                                <ul>
+                                    <li>
+                                        <i class="fa-solid fa-gear text-slate-500 mr-2"></i> 
+                                        <span class="font-bold text-white">services.exe</span> <span class="text-slate-500 font-mono">[PID: 744]</span>
+                                        <ul>
+                                            <li>
+                                                <i class="fa-solid fa-gear text-slate-500 mr-2"></i> 
+                                                <span>svchost.exe</span> <span class="text-slate-500 font-mono">[PID: 1024 - DcomLaunch]</span>
+                                            </li>
+                                            <li>
+                                                <i class="fa-solid fa-triangle-exclamation text-cyber-red mr-2 animate-pulse"></i> 
+                                                <span class="text-cyber-red font-bold font-mono">svchost.exe</span> <span class="text-slate-400 font-mono">[PID: 4320]</span> 
+                                                <span class="badge-cyber badge-red text-[9px] ml-2">UNAUTHORIZED DIRECTORY // C:\Temp\svchost.exe</span>
+                                                <ul>
+                                                    <li>
+                                                        <i class="fa-solid fa-terminal text-cyber-cyan mr-2"></i> 
+                                                        <span class="text-white font-mono">cmd.exe</span> <span class="text-slate-400 font-mono">[PID: 4356]</span>
+                                                    </li>
+                                                    <li>
+                                                        <i class="fa-solid fa-terminal text-amber-400 mr-2"></i> 
+                                                        <span class="text-amber-300 font-mono font-bold">powershell.exe</span> <span class="text-slate-400 font-mono">[PID: 4892]</span>
+                                                        <span class="badge-cyber badge-yellow text-[9px] ml-2">-Enc JABzAD0ATgBlAH...</span>
+                                                    </li>
+                                                </ul>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/editor.js"></script>
+<script>
+function investigationDetail() {
+    return {
+        data: {},
+        activeTab: 'overview',
+        editorCode: window.editorApp.code,
+        tabs: [
+            { id: 'overview', label: 'Overview Briefing', icon: 'fa-solid fa-shield-halved' },
+            { id: 'editor', label: 'JOCKY DSL Studio', icon: 'fa-solid fa-code' },
+            { id: 'artifacts', label: 'Evidence Artifacts', icon: 'fa-solid fa-box-archive' },
+            { id: 'timeline', label: 'Chronological Timeline', icon: 'fa-solid fa-clock-rotate-left' },
+            { id: 'iocs', label: 'IOC Signatures', icon: 'fa-solid fa-crosshairs' },
+            { id: 'correlations', label: 'Process Graph & Correlations', icon: 'fa-solid fa-diagram-project' }
+        ],
+        
+        async initData() {
+            window.editorApp.investigationId = '{{ id }}';
+            
+            // Attempt to load from real backend API
+            try {
+                const token = localStorage.getItem('jocky_token');
+                const headers = { 'Content-Type': 'application/json' };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                const res = await fetch(`/api/v1/investigations/{{ id }}`, { headers });
+                if (res.ok) {
+                    this.data = await res.json();
+                }
+
+                // Load associated evidence, iocs, and timeline
+                const [evRes, iocRes, tlRes] = await Promise.all([
+                    fetch(`/api/v1/evidence?investigation_id={{ id }}`, { headers }),
+                    fetch(`/api/v1/iocs?investigation_id={{ id }}`, { headers }),
+                    fetch(`/api/v1/timeline?investigation_id={{ id }}`, { headers })
+                ]);
+                if (evRes.ok) this.data.artifacts = await evRes.json();
+                if (iocRes.ok) this.data.iocs = await iocRes.json();
+                if (tlRes.ok) this.data.timeline = await tlRes.json();
+            } catch (err) {
+                console.warn("Could not load full investigation detail:", err);
+            }
+        },
+        
+        async updateStatus(newStatus) {
+            this.data.status = newStatus;
+            try {
+                await window.apiClient.patch(`/investigations/{{ id }}`, { status: newStatus });
+            } catch (err) {}
+            window.dispatchEvent(new CustomEvent('toast', { detail: { message: `Incident status updated to [${newStatus}]`, type: 'success' } }));
+        },
+        
+        editorCode: `// JOCKY Incident Triage Playbook
+TARGET SYSTEM;
+
+SCAN PROCESSES;
+SCAN NETWORK;
+
+FIND IOC;
+
+BUILD TIMELINE;
+
+EXPORT REPORT;
+`,
+        editorTab: 'ir',
+        editorIrOutput: '',
+        editorAstOutput: '',
+        editorExecResults: [],
+        isEditorCompiling: false,
+        isEditorExecuting: false,
+
+        loadCaseExample(name) {
+            const map = {
+                'basic_scan': `TARGET SYSTEM;\nSCAN PROCESSES;\nSCAN NETWORK;\nFIND IOC;\nBUILD TIMELINE;\nEXPORT REPORT;`,
+                'full_investigation': `TARGET SYSTEM;\nSCAN PROCESSES;\nSCAN FILES;\nSCAN NETWORK;\nSCAN EVENTLOGS;\nSCAN REGISTRY;\nFIND IOC;\nFIND SUSPICIOUS;\nBUILD TIMELINE;\nBUILD CORRELATIONS;\nBUILD PROCESSGRAPH;\nEXPORT REPORT TO "full_investigation_report";`,
+                'network_analysis': `TARGET SYSTEM;\nSCAN NETWORK;\nSCAN PROCESSES;\nFIND IOC;\nBUILD CORRELATIONS;\nBUILD TIMELINE;\nEXPORT REPORT;`,
+                'ioc_hunt': `TARGET SYSTEM;\nSCAN PROCESSES;\nSCAN NETWORK;\nSCAN REGISTRY;\nFIND IOC;\nFIND MALWARE;\nBUILD TIMELINE;\nEXPORT REPORT;`
+            };
+            if (map[name]) {
+                this.editorCode = map[name];
+                this.compile();
+            }
+        },
+
+        async compile() {
+            this.isEditorCompiling = true;
+            try {
+                const res = await window.apiClient.post(`/compiler/compile`, { source: this.editorCode });
+                if (res) {
+                    this.editorAstOutput = typeof res.ast === 'object' ? JSON.stringify(res.ast, null, 2) : String(res.ast);
+                    this.editorIrOutput = res.llvm_ir || '; [LLVM IR Generated Successfully]';
+                    this.editorTab = 'ir';
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Compilation & LLVM IR generated!', type: 'success' } }));
+                }
+            } catch (err) {
+                this.editorAstOutput = err.message;
+                this.editorIrOutput = '; Compilation failed: ' + err.message;
+                this.editorTab = 'ast';
+            } finally {
+                this.isEditorCompiling = false;
+            }
+        },
+        
+        async execute() {
+            this.isEditorExecuting = true;
+            this.editorTab = 'results';
+            this.editorExecResults = [
+                { type: 'info', message: '[*] Dispatching live sensors to target endpoint...' }
+            ];
+            try {
+                const res = await window.apiClient.post(`/investigations/{{ id }}/execute`, { source: this.editorCode });
+                if (res && res.logs) {
+                    this.editorExecResults = res.logs;
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Forensic scan complete!', type: 'success' } }));
+                }
+            } catch (err) {
+                this.editorExecResults.push({ type: 'error', message: err.message });
+            } finally {
+                this.isEditorExecuting = false;
+            }
+        },
+        
+        generateReport() {
+            window.dispatchEvent(new CustomEvent('toast', { detail: { message: `Compiling full forensic report...`, type: 'info' } }));
+            setTimeout(() => window.location.href = '/reports', 1200);
+        }
+    };
+}
+</script>
+{% endblock %}

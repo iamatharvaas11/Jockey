@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}JOCKY Systems{% endblock %}
+{% block header_title %}CENTRAL MANAGEMENT / SYSTEMS{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6 max-w-7xl mx-auto overflow-y-auto h-full pb-20 select-text"
+     x-data="{
+         endpoints: [],
+         investigations: [],
+         selectedInvestigation: '',
+         loading: true,
+         error: null,
+         search: '',
+         statusFilter: 'ALL',
+
+         getAuthHeaders() {
+             const headers = { 'Content-Type': 'application/json' };
+             const token = localStorage.getItem('jocky_token');
+             if (token) headers['Authorization'] = `Bearer ${token}`;
+             return headers;
+         },
+
+         async initData() {
+             await this.fetchInvestigations();
+             await this.fetchEndpoints();
+         },
+
+         async fetchInvestigations() {
+             try {
+                 const res = await fetch('/api/v1/investigations', { headers: this.getAuthHeaders() });
+                 if (res.ok) {
+                     this.investigations = await res.json();
+                 }
+             } catch (e) {
+                 console.warn('Could not load investigations:', e);
+             }
+         },
+
+         async fetchEndpoints() {
+             this.loading = true;
+             this.error = null;
+             try {
+                 let url = '/api/v1/endpoints';
+                 const params = [];
+                 if (this.selectedInvestigation) params.push(`investigation_id=${encodeURIComponent(this.selectedInvestigation)}`);
+                 if (this.statusFilter !== 'ALL') params.push(`status=${encodeURIComponent(this.statusFilter)}`);
+                 if (params.length > 0) url += `?${params.join('&')}`;
+
+                 const res = await fetch(url, { headers: this.getAuthHeaders() });
+                 if (res.status === 401) {
+                     throw new Error('Authentication required (401). Please log in.');
+                 }
+                 if (!res.ok) {
+                     const errData = await res.json().catch(() => ({}));
+                     throw new Error(errData.detail || `Unable to load endpoints (HTTP ${res.status})`);
+                 }
+                 this.endpoints = await res.json();
+             } catch (err) {
+                 this.error = err.message;
+             } finally {
+                 this.loading = false;
+             }
+         },
+
+         filteredEndpoints() {
+             return this.endpoints.filter(e => {
+                 const s = this.search.toLowerCase();
+                 const matchesSearch = !s ||
+                     (e.hostname && e.hostname.toLowerCase().includes(s)) ||
+                     (e.ip_address && e.ip_address.toLowerCase().includes(s)) ||
+                     (e.os_type && e.os_type.toLowerCase().includes(s));
+                 return matchesSearch;
+             });
+         }
+     }"
+     x-init="initData()">
+
+    <!-- Header Actions & Metrics -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="font-hud font-bold text-xl text-white tracking-wide">REGISTERED ENDPOINTS</h1>
+            <p class="text-xs font-data text-slate-400 mt-0.5">Real-time status, agent identities, and telemetry heartbeats</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button @click="fetchEndpoints()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-data rounded border border-cyber-border text-slate-300 flex items-center gap-2">
+                <i class="fa-solid fa-arrows-rotate" :class="{ 'fa-spin': loading }"></i>
+                <span>Refresh Endpoints</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter & Scope Controls -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-cyber-dark/60 p-4 rounded border border-cyber-border/80">
+        <div>
+            <label class="block text-[11px] font-data text-slate-400 uppercase mb-1">Investigation Scope</label>
+            <select x-model="selectedInvestigation" @change="fetchEndpoints()" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyber-cyan font-mono">
+                <option value="">[All Investigations / All Endpoints]</option>
+                <template x-for="inv in investigations" :key="inv.id">
+                    <option :value="inv.id" x-text="`${inv.case_number}: ${inv.title}`"></option>
+                </template>
+            </select>
+        </div>
+        <div>
+            <label class="block text-[11px] font-data text-slate-400 uppercase mb-1">Search Host / IP / OS</label>
+            <input type="text" x-model="search" placeholder="Search hostname, IP address..." class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyber-cyan font-mono">
+        </div>
+        <div>
+            <label class="block text-[11px] font-data text-slate-400 uppercase mb-1">Agent Status</label>
+            <select x-model="statusFilter" @change="fetchEndpoints()" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyber-cyan font-mono">
+                <option value="ALL">All Statuses</option>
+                <option value="ONLINE">ONLINE</option>
+                <option value="OFFLINE">OFFLINE</option>
+                <option value="INVESTIGATING">INVESTIGATING</option>
+                <option value="ISOLATED">ISOLATED</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div x-show="loading" class="text-center py-16">
+        <i class="fa-solid fa-circle-notch fa-spin text-3xl text-cyber-cyan mb-3"></i>
+        <div class="text-xs font-data text-slate-400">Querying endpoint registry...</div>
+    </div>
+
+    <!-- Error State -->
+    <div x-show="error && !loading" class="p-4 bg-red-950/40 border border-red-500/50 rounded text-red-300 text-xs font-data">
+        <div class="font-bold mb-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Telemetry Query Error</div>
+        <div x-text="error"></div>
+    </div>
+
+    <!-- Empty State -->
+    <div x-show="!loading && !error && filteredEndpoints().length === 0" class="text-center py-16 bg-cyber-dark/40 rounded border border-cyber-border/40">
+        <i class="fa-solid fa-desktop text-4xl text-slate-600 mb-3"></i>
+        <div class="text-sm font-hud text-slate-400">No Endpoints Registered</div>
+        <p class="text-xs font-data text-slate-500 mt-1">Enroll an endpoint agent or run a local investigation scan to register a host.</p>
+    </div>
+
+    <!-- Endpoints Table -->
+    <div x-show="!loading && !error && filteredEndpoints().length > 0" class="overflow-x-auto border border-cyber-border/80 rounded bg-cyber-dark/80">
+        <table class="w-full text-left text-xs font-data">
+            <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] border-b border-cyber-border">
+                <tr>
+                    <th class="p-3">Status</th>
+                    <th class="p-3">Hostname</th>
+                    <th class="p-3">IP Address</th>
+                    <th class="p-3">OS Platform</th>
+                    <th class="p-3">Last Heartbeat (UTC)</th>
+                    <th class="p-3">Agent Identity ID</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-cyber-border/40 text-slate-300">
+                <template x-for="ep in filteredEndpoints()" :key="ep.id">
+                    <tr class="hover:bg-slate-800/40 transition-colors">
+                        <td class="p-3">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+                                  :class="{
+                                      'bg-emerald-950/60 text-emerald-400 border border-emerald-500/30': ep.agent_status === 'ONLINE',
+                                      'bg-slate-800 text-slate-400 border border-slate-700': ep.agent_status === 'OFFLINE',
+                                      'bg-amber-950/60 text-amber-400 border border-amber-500/30': ep.agent_status === 'INVESTIGATING',
+                                      'bg-red-950/60 text-red-400 border border-red-500/30': ep.agent_status === 'ISOLATED'
+                                  }"
+                                  x-text="ep.agent_status">
+                            </span>
+                        </td>
+                        <td class="p-3 font-mono font-bold text-white" x-text="ep.hostname"></td>
+                        <td class="p-3 font-mono text-slate-400" x-text="ep.ip_address || '127.0.0.1'"></td>
+                        <td class="p-3 font-mono text-slate-300" x-text="ep.os_type || 'Unknown'"></td>
+                        <td class="p-3 font-mono text-slate-400" x-text="ep.last_seen ? ep.last_seen.substring(0, 19).replace('T', ' ') : 'Just now'"></td>
+                        <td class="p-3 font-mono text-cyber-cyan text-[11px]" x-text="ep.id ? ep.id.substring(0, 13) + '...' : 'local'"></td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

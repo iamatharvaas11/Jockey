@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}JOCKY // Threat Findings & IOCs{% endblock %}
+{% block header_title %}THREAT INDICATORS & IOC FINDINGS{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6 max-w-7xl mx-auto overflow-y-auto h-full pb-20 select-text"
+     x-data="{
+         iocs: [],
+         investigations: [],
+         selectedInvestigation: '',
+         loading: true,
+         error: null,
+         severityFilter: 'ALL',
+         search: '',
+
+         getAuthHeaders() {
+             const headers = { 'Content-Type': 'application/json' };
+             const token = localStorage.getItem('jocky_token');
+             if (token) headers['Authorization'] = `Bearer ${token}`;
+             return headers;
+         },
+
+         async initData() {
+             await this.fetchInvestigations();
+             await this.fetchIOCs();
+         },
+
+         async fetchInvestigations() {
+             try {
+                 const res = await fetch('/api/v1/investigations', { headers: this.getAuthHeaders() });
+                 if (res.ok) {
+                     this.investigations = await res.json();
+                 }
+             } catch (e) {
+                 console.warn('Could not load investigations:', e);
+             }
+         },
+
+         async fetchIOCs() {
+             this.loading = true;
+             this.error = null;
+             try {
+                 let url = '/api/v1/iocs';
+                 const params = [];
+                 if (this.selectedInvestigation) params.push(`investigation_id=${encodeURIComponent(this.selectedInvestigation)}`);
+                 if (this.severityFilter !== 'ALL') params.push(`severity=${encodeURIComponent(this.severityFilter)}`);
+                 if (params.length > 0) url += `?${params.join('&')}`;
+
+                 const res = await fetch(url, { headers: this.getAuthHeaders() });
+                 if (res.status === 401) {
+                     throw new Error('Authentication required (401). Please log in.');
+                 }
+                 if (!res.ok) {
+                     const errData = await res.json().catch(() => ({}));
+                     throw new Error(errData.detail || `Unable to load IOC detections (HTTP ${res.status})`);
+                 }
+                 this.iocs = await res.json();
+             } catch (err) {
+                 this.error = err.message;
+             } finally {
+                 this.loading = false;
+             }
+         },
+
+         filteredIOCs() {
+             return this.iocs.filter(i => {
+                 const sev = (i.threat_level || i.severity || '').toUpperCase();
+                 const matchesSev = this.severityFilter === 'ALL' || sev === this.severityFilter.toUpperCase();
+                 const s = this.search.toLowerCase();
+                 const val = (i.value || i.ioc_value || '').toLowerCase();
+                 const desc = (i.description || '').toLowerCase();
+                 const type = (i.ioc_type || '').toLowerCase();
+                 const matchesSearch = !s || val.includes(s) || desc.includes(s) || type.includes(s);
+                 return matchesSev && matchesSearch;
+             });
+         }
+     }"
+     x-init="initData()">
+
+    <!-- Header & Summary -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="font-hud font-bold text-xl text-white tracking-wide">IOC DETECTIONS & PATTERNS</h1>
+            <p class="text-xs font-data text-slate-400 mt-0.5">Automated detection engine findings, behavioral heuristics, and known threats</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button @click="fetchIOCs()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-data rounded border border-cyber-border text-slate-300 flex items-center gap-2">
+                <i class="fa-solid fa-arrows-rotate" :class="{ 'fa-spin': loading }"></i>
+                <span>Refresh Findings</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter & Scope Controls -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-cyber-dark/60 p-4 rounded border border-cyber-border/80">
+        <div>
+            <label class="block text-[11px] font-data text-slate-400 uppercase mb-1">Investigation Scope</label>
+            <select x-model="selectedInvestigation" @change="fetchIOCs()" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyber-cyan font-mono">
+                <option value="">[All Investigations / Global Findings]</option>
+                <template x-for="inv in investigations" :key="inv.id">
+                    <option :value="inv.id" x-text="`${inv.case_number}: ${inv.title}`"></option>
+                </template>
+            </select>
+        </div>
+        <div>
+            <label class="block text-[11px] font-data text-slate-400 uppercase mb-1">Search Rule / Value / Explanation</label>
+            <input type="text" x-model="search" placeholder="Search suspicious pattern or explanation..." class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyber-cyan font-mono">
+        </div>
+        <div>
+            <label class="block text-[11px] font-data text-slate-400 uppercase mb-1">Threat Severity</label>
+            <select x-model="severityFilter" @change="fetchIOCs()" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyber-cyan font-mono">
+                <option value="ALL">All Severities</option>
+                <option value="CRITICAL">CRITICAL</option>
+                <option value="HIGH">HIGH</option>
+                <option value="MEDIUM">MEDIUM</option>
+                <option value="LOW">LOW</option>
+                <option value="INFO">INFO</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div x-show="loading" class="text-center py-16">
+        <i class="fa-solid fa-circle-notch fa-spin text-3xl text-cyber-cyan mb-3"></i>
+        <div class="text-xs font-data text-slate-400">Scanning IOC detection store...</div>
+    </div>
+
+    <!-- Error State -->
+    <div x-show="error && !loading" class="p-4 bg-red-950/40 border border-red-500/50 rounded text-red-300 text-xs font-data">
+        <div class="font-bold mb-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Detection Query Error</div>
+        <div x-text="error"></div>
+    </div>
+
+    <!-- Empty State -->
+    <div x-show="!loading && !error && filteredIOCs().length === 0" class="text-center py-16 bg-cyber-dark/40 rounded border border-cyber-border/40">
+        <i class="fa-solid fa-shield-halved text-4xl text-emerald-600 mb-3"></i>
+        <div class="text-sm font-hud text-slate-300">No IOC Detections Found</div>
+        <p class="text-xs font-data text-slate-500 mt-1">No indicators or behavioral anomalies matched against the evaluated rule engine.</p>
+    </div>
+
+    <!-- Findings Grid -->
+    <div x-show="!loading && !error && filteredIOCs().length > 0" class="space-y-4">
+        <template x-for="ioc in filteredIOCs()" :key="ioc.id">
+            <div class="hud-panel p-5 rounded border-l-4 bg-cyber-dark/90"
+                 :class="{
+                     'border-l-red-500 border-red-500/30': (ioc.threat_level || ioc.severity) === 'CRITICAL',
+                     'border-l-orange-500 border-orange-500/30': (ioc.threat_level || ioc.severity) === 'HIGH',
+                     'border-l-amber-500 border-amber-500/30': (ioc.threat_level || ioc.severity) === 'MEDIUM',
+                     'border-l-cyan-500 border-cyan-500/30': (ioc.threat_level || ioc.severity) === 'LOW' || (ioc.threat_level || ioc.severity) === 'INFO'
+                 }">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                    <div class="flex items-center gap-3">
+                        <span class="px-2.5 py-0.5 rounded text-[10px] font-hud font-bold uppercase tracking-wider"
+                              :class="{
+                                  'bg-red-950 text-red-400 border border-red-500/40': (ioc.threat_level || ioc.severity) === 'CRITICAL',
+                                  'bg-orange-950 text-orange-400 border border-orange-500/40': (ioc.threat_level || ioc.severity) === 'HIGH',
+                                  'bg-amber-950 text-amber-400 border border-amber-500/40': (ioc.threat_level || ioc.severity) === 'MEDIUM',
+                                  'bg-cyan-950 text-cyan-400 border border-cyan-500/40': (ioc.threat_level || ioc.severity) === 'LOW' || (ioc.threat_level || ioc.severity) === 'INFO'
+                              }"
+                              x-text="ioc.threat_level || ioc.severity || 'MEDIUM'">
+                        </span>
+                        <h3 class="font-hud font-bold text-white text-sm tracking-wide" x-text="ioc.ioc_type || 'BEHAVIORAL_ANOMALY'"></h3>
+                    </div>
+                    <span class="text-xs font-mono text-slate-500" x-text="ioc.created_at ? ioc.created_at.substring(0, 19).replace('T', ' ') : 'N/A'"></span>
+                </div>
+
+                <div class="mt-2 text-xs font-mono text-slate-300 bg-slate-950/60 p-3 rounded border border-slate-800">
+                    <span class="text-slate-400 font-hud">RULE / INDICATOR:</span>
+                    <span class="text-cyber-cyan font-bold ml-1" x-text="ioc.value || ioc.ioc_value"></span>
+                </div>
+
+                <p class="mt-3 text-xs font-data text-slate-300 leading-relaxed" x-text="ioc.description || 'Behavioral anomaly flagged by correlation engine.'"></p>
+
+                <div class="mt-3 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-slate-400">
+                    <div>
+                        <span>EVIDENCE CITATIONS:</span>
+                        <span class="text-cyber-green ml-1" x-text="ioc.matched_events_count || (ioc.mitre_tactics ? ioc.mitre_tactics.length : 0)"></span> artifact(s) linked
+                    </div>
+                    <div class="text-slate-500" x-text="`ID: ${ioc.id}`"></div>
+                </div>
+            </div>
+        </template>
+    </div>
+</div>
+{% endblock %}

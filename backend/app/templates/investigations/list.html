@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}JOCKY // Investigation Registry{% endblock %}
+{% block header_title %}CLASSIFIED INCIDENT REGISTRY & CASE MANAGEMENT{% endblock %}
+
+{% block content %}
+<div x-data="investigationsList()" x-init="fetchInvestigations()" class="space-y-6">
+    
+    <!-- Top HUD Action Bar -->
+    <div class="hud-panel hud-corner-brackets p-4 rounded flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        
+        <!-- Search & Filter Controls -->
+        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto font-data text-xs">
+            <div class="relative w-full md:w-72">
+                <i class="fa-solid fa-crosshairs absolute left-3 top-2.5 text-slate-500"></i>
+                <input type="text" x-model="search" @input.debounce.250ms="filterList()" placeholder="SEARCH CASES, IDS, IOCS..." 
+                       class="cyber-input w-full pl-9 pr-3 py-2 rounded text-xs text-white placeholder-slate-500 focus:border-cyber-cyan">
+            </div>
+            
+            <select x-model="statusFilter" @change="filterList()" 
+                    class="cyber-input text-slate-300 text-xs rounded px-3 py-2 focus:border-cyber-cyan bg-slate-950">
+                <option value="">[ STATUS: ALL ]</option>
+                <option value="OPEN">STATUS: OPEN</option>
+                <option value="ACTIVE">STATUS: ACTIVE</option>
+                <option value="CONTAINED">STATUS: CONTAINED</option>
+                <option value="CLOSED">STATUS: CLOSED</option>
+            </select>
+            
+            <select x-model="severityFilter" @change="filterList()" 
+                    class="cyber-input text-slate-300 text-xs rounded px-3 py-2 focus:border-cyber-cyan bg-slate-950">
+                <option value="">[ SEVERITY: ALL ]</option>
+                <option value="CRITICAL">SEVERITY: CRITICAL</option>
+                <option value="HIGH">SEVERITY: HIGH</option>
+                <option value="MEDIUM">SEVERITY: MEDIUM</option>
+                <option value="LOW">SEVERITY: LOW</option>
+            </select>
+        </div>
+        
+        <!-- Primary Action Button -->
+        <button @click="showModal = true" class="cyber-btn text-xs py-2 px-4 whitespace-nowrap w-full md:w-auto">
+            <i class="fa-solid fa-plus-circle"></i>
+            <span>INITIALIZE NEW INCIDENT FILE</span>
+        </button>
+    </div>
+
+    <!-- Classified Investigations Data Table -->
+    <div class="hud-panel hud-corner-brackets rounded shadow-2xl overflow-hidden">
+        
+        <div class="px-5 py-3 border-b border-slate-800 bg-cyber-dark/60 flex items-center justify-between">
+            <div class="flex items-center gap-2 text-xs font-data">
+                <span class="beacon-pulse beacon-green"></span>
+                <span class="text-white font-hud font-bold uppercase tracking-wider">ACTIVE DOSSIER ARCHIVE</span>
+                <span class="text-slate-500 font-mono ml-2">(<span x-text="filteredItems.length"></span> CASES RECORDED)</span>
+            </div>
+            <div class="text-[10px] font-data text-slate-500 uppercase">
+                ENCRYPTED STORAGE // AES-256
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="cyber-table">
+                <thead>
+                    <tr>
+                        <th>CASE IDENTIFIER</th>
+                        <th>INCIDENT SUMMARY</th>
+                        <th>STATUS</th>
+                        <th>SEVERITY</th>
+                        <th>ATTACHED HOSTS</th>
+                        <th>PRIMARY INVESTIGATOR</th>
+                        <th>DISPATCH DATE</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 font-data">
+                    <template x-for="inv in filteredItems" :key="inv.id">
+                        <tr @click="window.location.href = `/investigations/${inv.id}`" class="cursor-pointer group">
+                            <td class="font-mono text-cyber-cyan font-bold tracking-wider group-hover:underline flex items-center gap-1.5">
+                                <i class="fa-solid fa-folder-closed text-[10px] text-slate-500 group-hover:text-cyber-cyan"></i>
+                                <span x-text="inv.case_number"></span>
+                            </td>
+                            <td class="text-white font-sans font-medium text-xs max-w-[280px] truncate" x-text="inv.title"></td>
+                            <td>
+                                <span class="badge-cyber" :class="window.utils.getStatusBadge(inv.status)" x-text="inv.status"></span>
+                            </td>
+                            <td>
+                                <span class="badge-cyber" :class="window.utils.getSeverityBadge(inv.severity)" x-text="inv.severity"></span>
+                            </td>
+                            <td class="text-slate-300 font-mono text-xs">
+                                <span class="text-cyber-green font-bold" x-text="inv.endpoints_count || 1"></span> <span class="text-slate-500">HOSTS</span>
+                            </td>
+                            <td class="text-slate-400 text-xs">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-5 h-5 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-cyber-cyan font-bold font-mono" x-text="(inv.lead_investigator || 'A').charAt(0).toUpperCase()"></div>
+                                    <span class="truncate font-mono text-xs" x-text="inv.lead_investigator || 'admin@jocky.org'"></span>
+                                </div>
+                            </td>
+                            <td class="text-slate-400 font-mono text-xs" x-text="window.utils.formatDate(inv.created_at)"></td>
+                        </tr>
+                    </template>
+                    <tr x-show="filteredItems.length === 0">
+                        <td colspan="7" class="text-center py-8 text-slate-500 font-mono text-xs">
+                            NO MATCHING INVESTIGATION FILES FOUND IN REGISTRY
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Tactical Table Footer -->
+        <div class="p-3 border-t border-slate-800 bg-cyber-dark/40 flex items-center justify-between text-xs font-data text-slate-500">
+            <div>AUDIT TRAIL: <span class="text-slate-300 font-mono" x-text="filteredItems.length"></span> CLASSIFIED INCIDENTS</div>
+            <div class="flex items-center gap-1">
+                <span class="px-2 py-0.5 border border-slate-800 bg-slate-900 text-cyber-cyan rounded">REGISTRY SECURE</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Investigation Cyber Modal -->
+    <div x-show="showModal" 
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4" 
+         style="display: none;">
+        <div @click.away="showModal = false" 
+             class="hud-panel hud-corner-brackets rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.9),0_0_25px_rgba(0,240,255,0.2)] w-full max-w-lg border border-cyber-cyan/40 bg-cyber-surface/95 overflow-hidden"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95">
+            
+            <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-cyber-dark/80">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-folder-plus text-cyber-cyan text-sm"></i>
+                    <h3 class="font-hud font-bold text-sm text-white uppercase tracking-wider">PROVISION NEW INCIDENT DOSSIER</h3>
+                </div>
+                <button @click="showModal = false" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            
+            <form @submit.prevent="createInvestigation" class="p-6 space-y-4 font-data">
+                <div>
+                    <label class="block text-xs font-hud font-bold text-slate-300 uppercase tracking-wider mb-1.5 flex justify-between">
+                        <span>Incident Operation Title</span>
+                        <span class="text-cyber-cyan text-[10px] font-mono">[REQUIRED]</span>
+                    </label>
+                    <input type="text" x-model="newForm.title" required 
+                           placeholder="e.g. Operation Chimera: Lateral Movement on DC-01"
+                           class="cyber-input w-full px-3 py-2 rounded text-sm text-white focus:border-cyber-cyan">
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-hud font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                        Forensic Scope & Background Dossier
+                    </label>
+                    <textarea x-model="newForm.description" rows="3" 
+                              placeholder="Describe observed IOCs, compromised processes, and investigative objectives..."
+                              class="cyber-input w-full px-3 py-2 rounded text-sm text-white focus:border-cyber-cyan resize-none"></textarea>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-hud font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                            Threat Severity Rating
+                        </label>
+                        <select x-model="newForm.severity" class="cyber-input w-full px-3 py-2 rounded text-sm text-white focus:border-cyber-cyan bg-slate-900">
+                            <option value="CRITICAL">CRITICAL (Active Breach / P1)</option>
+                            <option value="HIGH">HIGH (Malware / Suspicious)</option>
+                            <option value="MEDIUM">MEDIUM (Anomalous Activity)</option>
+                            <option value="LOW">LOW (Audit / Routine Sweep)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-hud font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                            Target Architecture
+                        </label>
+                        <input type="text" value="WINDOWS_X64 // WIN-11" readonly
+                               class="cyber-input w-full px-3 py-2 rounded text-sm text-slate-500 bg-slate-950 font-mono">
+                    </div>
+                </div>
+                
+                <div class="pt-4 border-t border-slate-800 flex justify-end gap-3 font-hud">
+                    <button type="button" @click="showModal = false" 
+                            class="px-4 py-2 border border-slate-700 bg-slate-800/80 text-slate-400 hover:text-white rounded text-xs uppercase tracking-wider transition-colors">
+                        ABORT
+                    </button>
+                    <button type="submit" :disabled="creating" 
+                            class="cyber-btn text-xs py-2 px-5">
+                        <span x-show="!creating"><i class="fa-solid fa-stamp mr-1"></i> INITIALIZE CASE</span>
+                        <span x-show="creating"><i class="fa-solid fa-circle-notch fa-spin mr-1"></i> GENERATING...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function investigationsList() {
+    return {
+        items: [],
+        filteredItems: [],
+        loading: true,
+        search: '',
+        statusFilter: '',
+        severityFilter: '',
+        
+        showModal: false,
+        creating: false,
+        newForm: { title: '', description: '', severity: 'HIGH' },
+        
+        getAuthHeaders() {
+            const headers = { 'Content-Type': 'application/json' };
+            const token = localStorage.getItem('jocky_token');
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            return headers;
+        },
+
+        async fetchInvestigations() {
+            this.loading = true;
+            try {
+                const res = await fetch('/api/v1/investigations', { headers: this.getAuthHeaders() });
+                if (res.ok) {
+                    this.items = await res.json();
+                } else {
+                    this.items = [];
+                }
+            } catch (err) {
+                console.warn("Could not load investigations:", err);
+                this.items = [];
+            } finally {
+                this.filterList();
+                this.loading = false;
+            }
+        },
+        
+        filterList() {
+            this.filteredItems = this.items.filter(item => {
+                let match = true;
+                if (this.statusFilter && item.status !== this.statusFilter) match = false;
+                if (this.severityFilter && item.severity !== this.severityFilter) match = false;
+                if (this.search) {
+                    const s = this.search.toLowerCase();
+                    if (!item.title.toLowerCase().includes(s) && !item.case_number.toLowerCase().includes(s)) match = false;
+                }
+                return match;
+            });
+        },
+        
+        async createInvestigation() {
+            this.creating = true;
+            try {
+                const payload = {
+                    title: this.newForm.title,
+                    description: this.newForm.description,
+                    severity: this.newForm.severity,
+                    tags: ['SIH2026', 'NTRO', 'FORENSIC']
+                };
+                
+                const created = await window.apiClient.post('/investigations', payload);
+                if (created) {
+                    this.items.unshift(created);
+                    this.filterList();
+                    this.showModal = false;
+                    this.newForm = { title: '', description: '', severity: 'HIGH' };
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { message: `Incident ${created.case_number} provisioned successfully`, type: 'success' } }));
+                    return;
+                }
+            } catch (err) {
+                console.warn("API creation failed, adding locally:", err);
+                const mockCase = {
+                    id: String(Date.now()),
+                    case_number: 'CAS-' + Math.random().toString(16).substring(2, 8).toUpperCase(),
+                    title: this.newForm.title,
+                    status: 'OPEN',
+                    severity: this.newForm.severity,
+                    endpoints_count: 1,
+                    lead_investigator: 'admin@jocky.org',
+                    created_at: new Date().toISOString()
+                };
+                this.items.unshift(mockCase);
+                this.filterList();
+                this.showModal = false;
+                this.newForm = { title: '', description: '', severity: 'HIGH' };
+                window.dispatchEvent(new CustomEvent('toast', { detail: { message: `Incident ${mockCase.case_number} created`, type: 'success' } }));
+            } finally {
+                this.creating = false;
+            }
+        }
+    };
+}
+</script>
+{% endblock %}

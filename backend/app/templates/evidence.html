@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}JOCKY Evidence Center{% endblock %}
+{% block header_title %}EVIDENCE CENTER / PERSISTENT FORENSIC RECORDS{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6 max-w-7xl mx-auto overflow-y-auto h-full pb-20 select-text"
+     x-data="{
+         evidence: [],
+         investigations: [],
+         selectedInvestigation: '',
+         loading: true,
+         error: null,
+         typeFilter: 'ALL',
+         search: '',
+         selectedItem: null,
+
+         getAuthHeaders() {
+             const headers = { 'Content-Type': 'application/json' };
+             const token = localStorage.getItem('jocky_token');
+             if (token) headers['Authorization'] = `Bearer ${token}`;
+             return headers;
+         },
+
+         async initData() {
+             await this.fetchInvestigations();
+             await this.fetchEvidence();
+         },
+
+         async fetchInvestigations() {
+             try {
+                 const res = await fetch('/api/v1/investigations', { headers: this.getAuthHeaders() });
+                 if (res.ok) {
+                     this.investigations = await res.json();
+                 }
+             } catch (e) {
+                 console.warn('Could not load investigations list:', e);
+             }
+         },
+
+         async fetchEvidence() {
+             this.loading = true;
+             this.error = null;
+             try {
+                 let url = '/api/v1/evidence?limit=500';
+                 if (this.selectedInvestigation) {
+                     url += `&investigation_id=${encodeURIComponent(this.selectedInvestigation)}`;
+                 }
+                 const res = await fetch(url, { headers: this.getAuthHeaders() });
+                 if (res.status === 401) {
+                     throw new Error('Authentication required (401). Please login to access forensic records.');
+                 }
+                 if (!res.ok) {
+                     const errData = await res.json().catch(() => ({}));
+                     throw new Error(errData.detail || `Unable to load evidence (HTTP ${res.status})`);
+                 }
+                 this.evidence = await res.json();
+             } catch (err) {
+                 this.error = err.message;
+             } finally {
+                 this.loading = false;
+             }
+         },
+
+         filteredItems() {
+             return this.evidence.filter(it => {
+                 const matchesType = this.typeFilter === 'ALL' || (it.type && it.type.toLowerCase() === this.typeFilter.toLowerCase());
+                 const s = this.search.toLowerCase();
+                 const matchesSearch = !s ||
+                     (it.host && it.host.toLowerCase().includes(s)) ||
+                     (it.hash && it.hash.toLowerCase().includes(s)) ||
+                     (it.source && it.source.toLowerCase().includes(s)) ||
+                     (it.data && JSON.stringify(it.data).toLowerCase().includes(s));
+                 return matchesType && matchesSearch;
+             });
+         }
+     }"
+     x-init="initData()">
+
+    <!-- Header Actions -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="font-hud font-bold text-xl text-white tracking-wide">EVIDENCE CENTER</h1>
+            <p class="text-xs font-data text-slate-400 mt-0.5">Persistent, normalized forensic artifacts with verifiable SHA-256 digests</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button @click="fetchEvidence()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-data rounded border border-cyber-border text-slate-300 flex items-center gap-2">
+                <i class="fa-solid fa-arrows-rotate" :class="{ 'fa-spin': loading }"></i>
+                <span>Refresh Evidence</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter & Case Selector Controls -->
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-cyber-dark/60 p-4 rounded border border-cyber-border/80">
+        <div>
+            <label class="block text-[11px] font-data text-slate-400 uppercase mb-1">Investigation Scope</label>
+            <select x-model="selectedInvestigation" @change="fetchEvidence()" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyber-cyan font-mono">
+                <option value="">[All Investigations / Global Evidence]</option>
+                <template x-for="inv in investigations" :key="inv.id">
+                    <option :value="inv.id" x-text="`${inv.case_number}: ${inv.title}`"></option>
+                </template>
+            </select>
+        </div>
+        <div>
+            <label class="block text-[11px] font-data text-slate-400 uppercase mb-1">Search Evidence Data / Hash</label>
+            <input type="text" x-model="search" placeholder="Search PID, IP, hash, command line..." class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyber-cyan font-mono">
+        </div>
+        <div>
+            <label class="block text-[11px] font-data text-slate-400 uppercase mb-1">Evidence Type</label>
+            <select x-model="typeFilter" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyber-cyan font-mono">
+                <option value="ALL">All Types</option>
+                <option value="process">PROCESS</option>
+                <option value="network">NETWORK</option>
+                <option value="file">FILE</option>
+                <option value="event">EVENT</option>
+                <option value="registry">REGISTRY</option>
+            </select>
+        </div>
+        <div class="flex items-end">
+            <div class="text-xs font-data text-slate-400">
+                <span>Loaded Records:</span> <span class="font-bold text-cyber-cyan" x-text="filteredItems().length">0</span> / <span x-text="evidence.length">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div x-show="loading" class="text-center py-16">
+        <i class="fa-solid fa-circle-notch fa-spin text-3xl text-cyber-cyan mb-3"></i>
+        <div class="text-xs font-data text-slate-400">Querying canonical evidence store...</div>
+    </div>
+
+    <!-- Error State -->
+    <div x-show="error && !loading" class="p-4 bg-red-950/40 border border-red-500/50 rounded text-red-300 text-xs font-data">
+        <div class="font-bold mb-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Evidence Retrieval Error</div>
+        <div x-text="error"></div>
+    </div>
+
+    <!-- Empty State -->
+    <div x-show="!loading && !error && filteredItems().length === 0" class="text-center py-16 bg-cyber-dark/40 rounded border border-cyber-border/40">
+        <i class="fa-solid fa-database text-4xl text-slate-600 mb-3"></i>
+        <div class="text-sm font-hud text-slate-400">No Evidence Items Found</div>
+        <p class="text-xs font-data text-slate-500 mt-1">Run a live scan via `jocky investigate` or select a different investigation filter.</p>
+    </div>
+
+    <!-- Evidence Table -->
+    <div x-show="!loading && !error && filteredItems().length > 0" class="overflow-x-auto border border-cyber-border/80 rounded bg-cyber-dark/80">
+        <table class="w-full text-left text-xs font-data">
+            <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] border-b border-cyber-border">
+                <tr>
+                    <th class="p-3">Type</th>
+                    <th class="p-3">Host</th>
+                    <th class="p-3">Timestamp (UTC)</th>
+                    <th class="p-3">SHA-256 Digest</th>
+                    <th class="p-3">Forensic Payload Summary</th>
+                    <th class="p-3 text-right">Inspect</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-cyber-border/40 text-slate-300">
+                <template x-for="item in filteredItems()" :key="item.id">
+                    <tr class="hover:bg-slate-800/40 transition-colors">
+                        <td class="p-3">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+                                  :class="{
+                                      'bg-cyan-950/60 text-cyan-400 border border-cyan-500/30': item.type === 'process',
+                                      'bg-blue-950/60 text-blue-400 border border-blue-500/30': item.type === 'network',
+                                      'bg-purple-950/60 text-purple-400 border border-purple-500/30': item.type === 'file',
+                                      'bg-amber-950/60 text-amber-400 border border-amber-500/30': item.type === 'event',
+                                      'bg-slate-800 text-slate-300 border border-slate-700': item.type === 'registry'
+                                  }"
+                                  x-text="item.type">
+                            </span>
+                        </td>
+                        <td class="p-3 font-mono text-white" x-text="item.host"></td>
+                        <td class="p-3 font-mono text-slate-400" x-text="item.timestamp ? item.timestamp.substring(0, 19) : 'N/A'"></td>
+                        <td class="p-3 font-mono text-cyber-cyan text-[11px]" x-text="item.hash ? item.hash.substring(0, 16) + '...' : 'N/A'"></td>
+                        <td class="p-3 font-mono text-slate-300 truncate max-w-xs" x-text="JSON.stringify(item.data)"></td>
+                        <td class="p-3 text-right">
+                            <button @click="selectedItem = item" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-cyber-cyan border border-cyber-cyan/30 rounded text-[10px] font-mono">
+                                RAW JSON
+                            </button>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Raw JSON Inspector Modal -->
+    <div x-show="selectedItem" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50" style="display: none;">
+        <div class="bg-slate-900 border border-cyber-cyan/40 rounded max-w-2xl w-full p-6 space-y-4 max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+                <h3 class="font-hud font-bold text-sm text-white" x-text="`EVIDENCE RECORD // ${selectedItem ? selectedItem.id : ''}`"></h3>
+                <button @click="selectedItem = null" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <pre class="bg-black/90 p-4 rounded text-xs font-mono text-cyber-green overflow-auto flex-1 select-text" x-text="JSON.stringify(selectedItem, null, 2)"></pre>
+            <div class="flex justify-end">
+                <button @click="selectedItem = null" class="px-4 py-1.5 bg-slate-800 text-white rounded text-xs font-hud">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

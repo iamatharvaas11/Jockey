@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+
+{% block title %}JOCKY — Programmable Digital Forensics{% endblock %}
+{% block header_title %}PROGRAMMABLE DIGITAL FORENSICS{% endblock %}
+
+{% block content %}
+<div x-data="dashboardData()" x-init="initDashboard()" class="space-y-6">
+
+    <!-- Top Tactical Status Banner -->
+    <div class="hud-panel hud-corner-brackets p-4 border border-cyber-border/80 rounded bg-cyber-dark/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
+        <div class="flex items-center gap-3">
+            <div class="w-3 h-3 rounded-full bg-cyber-green animate-ping"></div>
+            <div>
+                <div class="flex items-center gap-2">
+                        <span class="font-hud font-bold text-white text-sm tracking-wider">JOCKY — PROGRAMMABLE DIGITAL FORENSICS</span>
+                    <span class="hud-telemetry-tag text-[9px]">GALXECODE 2026</span>
+                </div>
+                <p class="text-xs font-data text-slate-400 mt-0.5">
+                    Investigation command center for evidence collection, compiler-driven workflows, and cross-system correlation.
+                </p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3 w-full md:w-auto">
+            <a href="/editor" class="cyber-btn cyber-btn-cyan text-xs py-2 px-4 w-full md:w-auto">
+                <i class="fa-solid fa-bolt"></i>
+                <span>OPEN JOCKY STUDIO</span>
+            </a>
+            <a href="/investigations" class="cyber-btn text-xs py-2 px-4 w-full md:w-auto">
+                <i class="fa-solid fa-plus"></i>
+                <span>INVESTIGATIONS</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Telemetry Cards 4-Column Grid with 3D Depth -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 perspective-container">
+        
+        <!-- Card 1: Active Investigations -->
+        <div class="hud-panel hud-corner-brackets cyber-card-3d p-5 rounded border-l-4 border-l-cyber-cyan">
+            <div class="flex justify-between items-start">
+                <div>
+                    <div class="hud-telemetry-tag mb-1.5 text-[9px]">SUBSYS // CASES</div>
+                    <p class="text-xs font-hud uppercase tracking-wider text-slate-400">Active investigations</p>
+                    <h3 class="text-3xl font-data font-bold text-white mt-1.5 tracking-tight glow-cyan" x-text="stats.activeInvestigations">0</h3>
+                </div>
+                <div class="w-11 h-11 rounded bg-cyan-950/40 border border-cyber-cyan/40 flex items-center justify-center text-cyber-cyan shadow-[0_0_12px_rgba(0,240,255,0.25)]">
+                    <i class="fa-solid fa-folder-open text-lg"></i>
+                </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs font-data">
+                <span class="text-cyber-green flex items-center gap-1">
+                    <i class="fa-solid fa-arrow-trend-up"></i> +14.2%
+                </span>
+                <span class="text-slate-500">CYCLE RATE // 7D</span>
+            </div>
+        </div>
+
+        <!-- Card 2: Endpoints Monitored -->
+        <div class="hud-panel hud-corner-brackets cyber-card-3d p-5 rounded border-l-4 border-l-cyber-green">
+            <div class="flex justify-between items-start">
+                <div>
+                    <div class="hud-telemetry-tag mb-1.5 text-[9px] text-cyber-green border-cyber-green/30 bg-emerald-950/20">AGENT // TELEMETRY</div>
+                    <p class="text-xs font-hud uppercase tracking-wider text-slate-400">Monitored systems</p>
+                    <h3 class="text-3xl font-data font-bold text-white mt-1.5 tracking-tight glow-green" x-text="stats.endpoints">0</h3>
+                </div>
+                <div class="w-11 h-11 rounded bg-emerald-950/40 border border-cyber-green/40 flex items-center justify-center text-cyber-green shadow-[0_0_12px_rgba(0,255,157,0.25)]">
+                    <i class="fa-solid fa-network-wired text-lg"></i>
+                </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs font-data">
+                <span class="text-cyber-green flex items-center gap-1">
+                    <span class="beacon-pulse beacon-green"></span> ALL MONITORED
+                </span>
+                <span class="text-slate-500 font-mono">100% HEALTH</span>
+            </div>
+        </div>
+
+        <!-- Card 3: Critical Threat Alerts -->
+        <div class="hud-panel hud-corner-brackets cyber-card-3d p-5 rounded border-l-4 border-l-cyber-red">
+            <div class="flex justify-between items-start">
+                <div>
+                    <div class="hud-telemetry-tag mb-1.5 text-[9px]">PERSISTENT STORE</div>
+                    <p class="text-xs font-hud uppercase tracking-wider text-slate-400">Evidence items</p>
+                    <h3 class="text-3xl font-data font-bold text-white mt-1.5 tracking-tight" x-text="stats.totalEvidence">0</h3>
+                </div>
+                <div class="w-11 h-11 rounded bg-red-950/40 border border-cyber-red/40 flex items-center justify-center text-cyber-red shadow-[0_0_12px_rgba(255,42,95,0.25)]">
+                    <i class="fa-solid fa-box-archive text-lg"></i>
+                </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs font-data">
+                <span class="text-cyber-red flex items-center gap-1 font-bold">
+                    <i class="fa-solid fa-fingerprint"></i> integrity tracked
+                </span>
+                <span class="text-slate-500 font-mono">SHA-256</span>
+            </div>
+        </div>
+
+        <!-- Card 4: IOC Signatures Detected -->
+        <div class="hud-panel hud-corner-brackets cyber-card-3d p-5 rounded border-l-4 border-l-cyber-amber">
+            <div class="flex justify-between items-start">
+                <div>
+                    <div class="hud-telemetry-tag mb-1.5 text-[9px]">TIMELINE</div>
+                    <p class="text-xs font-hud uppercase tracking-wider text-slate-400">Network events</p>
+                    <h3 class="text-3xl font-data font-bold text-white mt-1.5 tracking-tight" x-text="stats.totalTimelineEvents">0</h3>
+                </div>
+                <div class="w-11 h-11 rounded bg-amber-950/40 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.25)]">
+                    <i class="fa-solid fa-network-wired text-lg"></i>
+                </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs font-data">
+                <span class="text-amber-400 flex items-center gap-1">
+                    <i class="fa-solid fa-route"></i> contextualized
+                </span>
+                <span class="text-slate-500 font-mono">real records</span>
+            </div>
+        </div>
+
+        <div class="hud-panel hud-corner-brackets cyber-card-3d p-5 rounded border-l-4 border-l-cyber-cyan">
+            <div class="flex justify-between items-start"><div><div class="hud-telemetry-tag mb-1.5 text-[9px]">CORRELATION</div><p class="text-xs font-hud uppercase tracking-wider text-slate-400">Correlated findings</p><h3 class="text-3xl font-data font-bold text-white mt-1.5" x-text="stats.totalRelationships">0</h3></div><div class="w-11 h-11 rounded bg-cyan-950/40 border border-cyber-cyan/40 flex items-center justify-center text-cyber-cyan"><i class="fa-solid fa-diagram-project text-lg"></i></div></div>
+            <div class="mt-4 pt-3 border-t border-slate-800/80 flex justify-between text-xs font-data"><span class="text-cyber-green">evidence linked</span><span class="text-slate-500">real records</span></div>
+        </div>
+
+    </div>
+
+    <section class="hud-panel p-5 rounded border border-cyber-border/80">
+        <div class="flex items-start justify-between gap-4 mb-4"><div><p class="text-[10px] font-data text-cyber-cyan tracking-widest">INVESTIGATION WORKFLOW</p><h2 class="font-hud text-lg font-bold text-white mt-1">From JOCKY function to verified report</h2></div><a href="/editor" class="text-xs text-cyber-cyan font-data">Open Studio <i class="fa-solid fa-arrow-right ml-1"></i></a></div>
+        <div class="jocky-flow"><span>CREATE<br>INVESTIGATION</span><i>→</i><span>SELECT<br>SYSTEMS</span><i>→</i><span>RUN JOCKY<br>FUNCTION</span><i>→</i><span>COLLECT<br>EVIDENCE</span><i>→</i><span>CORRELATE</span><i>→</i><span>REPORT</span></div>
+        <p class="text-xs text-slate-500 mt-4 font-data">Persistent data: evidence, metadata, timeline, investigation and reports. Compilation data (AST/IR) remains transient unless explicitly exported.</p>
+    </section>
+
+    <!-- Mid Section: Cyber Telemetry Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Chart 1: Case Pipeline by Status -->
+        <div class="hud-panel hud-corner-brackets p-5 rounded relative overflow-hidden">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-cyber-cyan"><i class="fa-solid fa-chart-column"></i></span>
+                    <h3 class="font-hud font-bold text-sm text-white tracking-wider uppercase">INVESTIGATION DISPOSITION PIPELINE</h3>
+                </div>
+                <span class="hud-telemetry-tag text-[9px]">LIVE TELEMETRY</span>
+            </div>
+            <div class="relative h-64 w-full">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 2: Findings distribution from stored IOC records -->
+        <div class="hud-panel hud-corner-brackets p-5 rounded relative overflow-hidden">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-cyber-cyan"><i class="fa-solid fa-chart-pie"></i></span>
+                    <h3 class="font-hud font-bold text-sm text-white tracking-wider uppercase">RECORDED FINDINGS OVERVIEW</h3>
+                </div>
+                <span class="hud-telemetry-tag text-[9px]">DATABASE RECORDS</span>
+            </div>
+            <div class="relative h-64 w-full flex justify-center items-center">
+                <canvas id="severityChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bottom Tables: Live Incident Ticker & Telemetry Feed -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Table 1: Recent Classified Investigations -->
+        <div class="hud-panel hud-corner-brackets rounded overflow-hidden flex flex-col">
+            <div class="p-4 border-b border-slate-800 bg-cyber-dark/40 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-shield-cat text-cyber-cyan text-sm"></i>
+                    <h4 class="font-hud font-bold text-xs uppercase tracking-wider text-white">ACTIVE INVESTIGATION FILES</h4>
+                </div>
+                <a href="/investigations" class="text-xs font-data text-cyber-cyan hover:underline flex items-center gap-1">
+                    VIEW REGISTRY <i class="fa-solid fa-angle-right text-[10px]"></i>
+                </a>
+            </div>
+            
+            <div class="overflow-x-auto flex-1">
+                <table class="cyber-table">
+                    <thead>
+                        <tr>
+                            <th>CASE IDENTIFIER</th>
+                            <th>OPERATION TITLE</th>
+                            <th>STATUS</th>
+                            <th>RECORDED</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60 font-data">
+                        <template x-for="inv in recentInvestigations" :key="inv.id">
+                            <tr @click="window.location.href = `/investigations/${inv.id}`" class="cursor-pointer">
+                                <td class="font-mono text-cyber-cyan font-bold tracking-wider" x-text="inv.case_number"></td>
+                                <td class="text-slate-200 font-sans font-medium text-xs truncate max-w-[200px]" x-text="inv.title"></td>
+                                <td>
+                                    <span class="badge-cyber" :class="window.utils.getStatusBadge(inv.status)" x-text="inv.status"></span>
+                                </td>
+                                <td class="text-slate-400 text-xs font-mono" x-text="window.utils.formatDate(inv.created_at)"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Table 2: Live Forensic Threat Stream -->
+        <div class="hud-panel hud-corner-brackets rounded overflow-hidden flex flex-col">
+            <div class="p-4 border-b border-slate-800 bg-cyber-dark/40 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-satellite-dish text-cyber-green text-sm animate-pulse"></i>
+                    <h4 class="font-hud font-bold text-xs uppercase tracking-wider text-white">LIVE FORENSIC THREAT TELEMETRY</h4>
+                </div>
+                <span class="hud-telemetry-tag text-[9px] text-cyber-green border-cyber-green/30">
+                    <span class="w-1.5 h-1.5 rounded-full bg-cyber-green animate-ping"></span> REAL-TIME STREAM
+                </span>
+            </div>
+            
+            <div class="p-3 divide-y divide-slate-800/80 overflow-y-auto max-h-[310px] font-data text-xs space-y-2">
+                <template x-for="alert in recentAlerts" :key="alert.id">
+                    <div class="pt-2 flex items-start gap-3 hover:bg-slate-900/40 p-2 rounded transition-colors">
+                        <div class="mt-0.5">
+                            <i class="fa-solid text-sm" :class="{
+                                'fa-skull-crossbones text-cyber-red': alert.severity === 'CRITICAL',
+                                'fa-triangle-exclamation text-amber-400': alert.severity === 'HIGH',
+                                'fa-circle-exclamation text-cyber-cyan': alert.severity === 'MEDIUM',
+                                'fa-circle-info text-slate-500': alert.severity === 'LOW'
+                            }"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="badge-cyber text-[10px]" :class="window.utils.getSeverityBadge(alert.severity)" x-text="alert.severity"></span>
+                                <span class="text-[10px] text-slate-500 font-mono" x-text="window.utils.formatDate(alert.timestamp)"></span>
+                            </div>
+                            <p class="text-slate-300 font-mono text-xs mt-1 truncate" x-text="alert.description"></p>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+function dashboardData() {
+    return {
+        stats: {
+            activeInvestigations: 0,
+            endpoints: 0,
+            criticalAlerts: 0,
+            iocs: 0,
+            totalEvidence: 0,
+            totalTimelineEvents: 0,
+            totalRelationships: 0
+        },
+        recentInvestigations: [],
+        recentAlerts: [],
+
+        statusDist: { OPEN: 0, ACTIVE: 0, CONTAINED: 0, CLOSED: 0 },
+
+        getAuthHeaders() {
+            const headers = { 'Content-Type': 'application/json' };
+            const token = localStorage.getItem('jocky_token');
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            return headers;
+        },
+
+        async initDashboard() {
+            try {
+                // Fetch real stats from /api/v1/stats
+                const statsRes = await fetch('/api/v1/stats', { headers: this.getAuthHeaders() });
+                if (statsRes.ok) {
+                    const s = await statsRes.json();
+                    this.stats.activeInvestigations = s.activeInvestigations;
+                    this.stats.endpoints = s.endpoints;
+                    this.stats.criticalAlerts = s.criticalAlerts;
+                    this.stats.iocs = s.iocs;
+                    this.stats.totalEvidence = s.totalEvidence || 0;
+                    this.stats.totalTimelineEvents = s.totalTimelineEvents || 0;
+                    this.stats.totalRelationships = s.totalRelationships || 0;
+                    this.recentAlerts = s.recentAlerts || [];
+                    this.statusDist = s.statusDistribution || { OPEN: 0, ACTIVE: 0, CONTAINED: 0, CLOSED: 0 };
+                }
+
+                // Fetch real investigations from API
+                const invRes = await fetch('/api/v1/investigations?limit=5', { headers: this.getAuthHeaders() });
+                if (invRes.ok) {
+                    this.recentInvestigations = await invRes.json();
+                }
+            } catch (err) {
+                console.warn("Could not load real statistics:", err);
+            }
+
+            this.initCharts();
+        },
+
+        initCharts() {
+            Chart.defaults.color = '#64748b';
+            Chart.defaults.font.family = "'Share Tech Mono', monospace";
+            Chart.defaults.borderColor = 'rgba(30, 58, 102, 0.3)';
+            
+            const dist = this.statusDist || { OPEN: 0, ACTIVE: 0, CONTAINED: 0, CLOSED: 0 };
+            // Status Chart
+            const ctxStatus = document.getElementById('statusChart').getContext('2d');
+            new Chart(ctxStatus, {
+                type: 'bar',
+                data: {
+                    labels: ['OPEN', 'ACTIVE', 'CONTAINED', 'CLOSED'],
+                    datasets: [{
+                        label: 'Investigations',
+                        data: [dist.OPEN || 0, dist.ACTIVE || 0, dist.CONTAINED || 0, dist.CLOSED || 0],
+                        backgroundColor: [
+                            'rgba(0, 240, 255, 0.45)', 
+                            'rgba(0, 255, 157, 0.45)', 
+                            'rgba(245, 158, 11, 0.45)', 
+                            'rgba(100, 116, 139, 0.35)'
+                        ],
+                        borderColor: [
+                            '#00f0ff', '#00ff9d', '#f59e0b', '#64748b'
+                        ],
+                        borderWidth: 1.5,
+                        borderRadius: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { 
+                        y: { 
+                            beginAtZero: true, 
+                            grid: { color: 'rgba(30, 58, 102, 0.35)' },
+                            ticks: { color: '#64748b' }
+                        }, 
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8', font: { weight: 'bold' } }
+                        } 
+                    },
+                    plugins: { 
+                        legend: { display: false } 
+                    }
+                }
+            });
+
+            // Stored findings overview: elevated = HIGH or CRITICAL database records.
+            const ctxSev = document.getElementById('severityChart').getContext('2d');
+            new Chart(ctxSev, {
+                type: 'doughnut',
+                data: {
+                    labels: ['ELEVATED FINDINGS', 'OTHER RECORDED FINDINGS'],
+                    datasets: [{
+                        data: [this.stats.criticalAlerts || 0, Math.max(0, (this.stats.iocs || 0) - (this.stats.criticalAlerts || 0))],
+                        backgroundColor: [
+                            'rgba(184, 75, 91, 0.80)',
+                            'rgba(14, 155, 177, 0.80)'
+                        ],
+                        borderColor: '#f6f9fb',
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '72%',
+                    plugins: {
+                        legend: { 
+                            position: 'right',
+                            labels: {
+                                color: '#cbd5e1',
+                                boxWidth: 12,
+                                padding: 14,
+                                font: { size: 11 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    };
+}
+</script>
+{% endblock %}

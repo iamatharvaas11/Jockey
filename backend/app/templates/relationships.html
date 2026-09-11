@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}JOCKY // Forensic Relationship Graph{% endblock %}
+{% block header_title %}CROSS-ARTIFACT CORRELATION GRAPH{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6 max-w-7xl mx-auto overflow-y-auto h-full pb-20 select-text"
+     x-data="{
+         relationships: [],
+         investigations: [],
+         selectedInvestigation: '',
+         loading: true,
+         error: null,
+         typeFilter: 'ALL',
+         search: '',
+
+         getAuthHeaders() {
+             const headers = { 'Content-Type': 'application/json' };
+             const token = localStorage.getItem('jocky_token');
+             if (token) headers['Authorization'] = `Bearer ${token}`;
+             return headers;
+         },
+
+         async initData() {
+             await this.fetchInvestigations();
+             await this.fetchRelationships();
+         },
+
+         async fetchInvestigations() {
+             try {
+                 const res = await fetch('/api/v1/investigations', { headers: this.getAuthHeaders() });
+                 if (res.ok) {
+                     this.investigations = await res.json();
+                 }
+             } catch (e) {
+                 console.warn('Could not load investigations list:', e);
+             }
+         },
+
+         async fetchRelationships() {
+             this.loading = true;
+             this.error = null;
+             try {
+                 let url = '/api/v1/relationships?limit=300';
+                 if (this.selectedInvestigation) {
+                     url += `&investigation_id=${encodeURIComponent(this.selectedInvestigation)}`;
+                 }
+                 if (this.typeFilter !== 'ALL') {
+                     url += `&relationship_type=${encodeURIComponent(this.typeFilter)}`;
+                 }
+
+                 const res = await fetch(url, { headers: this.getAuthHeaders() });
+                 if (res.status === 401) {
+                     throw new Error('Authentication required (401). Please log in.');
+                 }
+                 if (!res.ok) {
+                     const errData = await res.json().catch(() => ({}));
+                     throw new Error(errData.detail || `Unable to load relationships (HTTP ${res.status})`);
+                 }
+                 this.relationships = await res.json();
+             } catch (err) {
+                 this.error = err.message;
+             } finally {
+                 this.loading = false;
+             }
+         },
+
+         filteredRelationships() {
+             return this.relationships.filter(r => {
+                 const s = this.search.toLowerCase();
+                 return !s ||
+                     (r.reason && r.reason.toLowerCase().includes(s)) ||
+                     (r.relationship_type && r.relationship_type.toLowerCase().includes(s)) ||
+                     (r.source_evidence_id && r.source_evidence_id.toLowerCase().includes(s)) ||
+                     (r.target_evidence_id && r.target_evidence_id.toLowerCase().includes(s));
+             });
+         }
+     }"
+     x-init="initData()">
+
+    <!-- Header Actions -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="font-hud font-bold text-xl text-white tracking-wide">ARTIFACT RELATIONSHIP GRAPH</h1>
+            <p class="text-xs font-data text-slate-400 mt-0.5">Correlated linkages across parent processes, sockets, files, and autoruns</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button @click="fetchRelationships()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-data rounded border border-cyber-border text-slate-300 flex items-center gap-2">
+                <i class="fa-solid fa-arrows-rotate" :class="{ 'fa-spin': loading }"></i>
+                <span>Refresh Relationships</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter & Scope Controls -->
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-cyber-dark/60 p-4 rounded border border-cyber-border/80">
+        <div>
+            <label class="block text-[11px] font-data text-slate-400 uppercase mb-1">Investigation Scope</label>
+            <select x-model="selectedInvestigation" @change="fetchRelationships()" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyber-cyan font-mono">
+                <option value="">[All Investigations / Master Graph]</option>
+                <template x-for="inv in investigations" :key="inv.id">
+                    <option :value="inv.id" x-text="`${inv.case_number}: ${inv.title}`"></option>
+                </template>
+            </select>
+        </div>
+        <div>
+            <label class="block text-[11px] font-data text-slate-400 uppercase mb-1">Search Relationships / Reason</label>
+            <input type="text" x-model="search" placeholder="Search reason or evidence ID..." class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyber-cyan font-mono">
+        </div>
+        <div>
+            <label class="block text-[11px] font-data text-slate-400 uppercase mb-1">Relationship Type</label>
+            <select x-model="typeFilter" @change="fetchRelationships()" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyber-cyan font-mono">
+                <option value="ALL">All Types</option>
+                <option value="PARENT_OF">PARENT_OF</option>
+                <option value="OPENED_SOCKET">OPENED_SOCKET</option>
+                <option value="CREATED_FILE">CREATED_FILE</option>
+                <option value="MODIFIED_REGISTRY">MODIFIED_REGISTRY</option>
+            </select>
+        </div>
+        <div class="flex items-end">
+            <div class="text-xs font-data text-slate-400">
+                <span>Loaded Edges:</span> <span class="font-bold text-cyber-cyan" x-text="filteredRelationships().length">0</span> / <span x-text="relationships.length">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div x-show="loading" class="text-center py-16">
+        <i class="fa-solid fa-circle-notch fa-spin text-3xl text-cyber-cyan mb-3"></i>
+        <div class="text-xs font-data text-slate-400">Querying correlation relationship graph...</div>
+    </div>
+
+    <!-- Error State -->
+    <div x-show="error && !loading" class="p-4 bg-red-950/40 border border-red-500/50 rounded text-red-300 text-xs font-data">
+        <div class="font-bold mb-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Correlation Query Error</div>
+        <div x-text="error"></div>
+    </div>
+
+    <!-- Empty State -->
+    <div x-show="!loading && !error && filteredRelationships().length === 0" class="text-center py-20 bg-cyber-dark/40 rounded border border-cyber-border/40">
+        <i class="fa-solid fa-project-diagram text-4xl text-slate-600 mb-3"></i>
+        <div class="text-sm font-hud text-slate-400">No Correlated Relationships in Current View</div>
+        <p class="text-xs font-data text-slate-500 mt-1 max-w-md mx-auto">
+            Execute an investigation with multi-artifact collectors (processes, sockets, files) to generate correlation edges.
+        </p>
+    </div>
+
+    <!-- Relationships Table -->
+    <div x-show="!loading && !error && filteredRelationships().length > 0" class="overflow-x-auto border border-cyber-border/80 rounded bg-cyber-dark/80">
+        <table class="w-full text-left text-xs font-data">
+            <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] border-b border-cyber-border">
+                <tr>
+                    <th class="p-3">Relationship Type</th>
+                    <th class="p-3">Source Evidence</th>
+                    <th class="p-3">Target Evidence</th>
+                    <th class="p-3">Confidence</th>
+                    <th class="p-3">Correlation Reason</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-cyber-border/40 text-slate-300">
+                <template x-for="r in filteredRelationships()" :key="r.id">
+                    <tr class="hover:bg-slate-800/40 transition-colors">
+                        <td class="p-3">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase tracking-wider"
+                                  :class="{
+                                      'bg-cyan-950 text-cyan-400 border border-cyan-500/30': r.relationship_type === 'PARENT_OF',
+                                      'bg-blue-950 text-blue-400 border border-blue-500/30': r.relationship_type === 'OPENED_SOCKET',
+                                      'bg-purple-950 text-purple-400 border border-purple-500/30': r.relationship_type === 'CREATED_FILE',
+                                      'bg-slate-800 text-slate-300 border border-slate-700': r.relationship_type !== 'PARENT_OF' && r.relationship_type !== 'OPENED_SOCKET' && r.relationship_type !== 'CREATED_FILE'
+                                  }"
+                                  x-text="r.relationship_type">
+                            </span>
+                        </td>
+                        <td class="p-3 font-mono text-white text-[11px]" x-text="r.source_evidence_id"></td>
+                        <td class="p-3 font-mono text-cyber-cyan text-[11px]" x-text="r.target_evidence_id"></td>
+                        <td class="p-3 font-mono font-bold"
+                            :class="r.confidence >= 0.8 ? 'text-cyber-green' : 'text-amber-400'"
+                            x-text="`${Math.round(r.confidence * 100)}%`">
+                        </td>
+                        <td class="p-3 text-slate-300 font-data max-w-md" x-text="r.reason || 'Heuristic correlation'"></td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

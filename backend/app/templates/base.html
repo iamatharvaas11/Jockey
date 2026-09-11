@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}JOCKY — Programmable Digital Forensics{% endblock %}</title>
+    
+    <!-- Clean forensic research interface typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@600;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            green: '#00ff9d',
+                            cyan: '#00f0ff',
+                            blue: '#38bdf8',
+                            red: '#ff2a5f',
+                            amber: '#f59e0b',
+                            dark: '#04070e',
+                            surface: '#070c18',
+                            panel: 'rgba(10, 17, 32, 0.85)',
+                            border: 'rgba(30, 58, 102, 0.5)'
+                        }
+                    },
+                    fontFamily: {
+                        hud: ['Orbitron', 'Rajdhani', 'sans-serif'],
+                        data: ['Share Tech Mono', 'JetBrains Mono', 'monospace'],
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- JOCKY forensic design system -->
+    <link rel="stylesheet" href="/static/css/custom.css">
+    
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- App Scripts -->
+    <script src="/static/js/app.js"></script>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="jocky-shell text-slate-700 antialiased overflow-hidden flex h-screen select-none"
+      x-data="{ 
+          sidebarOpen: true, 
+          userDropdownOpen: false,
+          utcTime: '',
+          initClock() {
+              const update = () => {
+                  const now = new Date();
+                  this.utcTime = now.toUTCString().split(' ')[4] + ' UTC';
+              };
+              update();
+              setInterval(update, 1000);
+          }
+      }"
+      x-init="initClock()">
+
+
+    <!-- Command Center Sidebar -->
+    <aside class="hud-panel border-r border-cyber-border flex flex-col transition-all duration-300 z-30 relative"
+           :class="sidebarOpen ? 'w-64' : 'w-20'">
+        
+        <!-- Brand / Identity Header -->
+        <div class="h-16 flex items-center justify-between px-4 border-b border-cyber-border/80 bg-cyber-dark/40">
+            <div class="flex items-center gap-3 overflow-hidden">
+                <div class="w-9 h-9 rounded bg-cyan-950/40 border border-cyber-cyan flex items-center justify-center text-cyber-cyan shadow-[0_0_12px_rgba(0,240,255,0.3)] shrink-0">
+                    <i class="fa-solid fa-shield-virus text-base animate-pulse"></i>
+                </div>
+                <div x-show="sidebarOpen" class="flex flex-col">
+                    <span class="font-hud font-bold text-lg text-white tracking-widest leading-none flex items-center gap-1.5">
+                        JOCKY
+                    </span>
+                    <span class="text-[9px] font-data text-slate-400 tracking-wider mt-0.5">GALXECODE 2026</span>
+                </div>
+            </div>
+            
+            <button @click="sidebarOpen = !sidebarOpen" class="text-slate-400 hover:text-cyber-cyan text-sm p-1.5 rounded hover:bg-slate-800/60 transition-colors">
+                <i class="fa-solid" :class="sidebarOpen ? 'fa-chevron-left' : 'fa-chevron-right'"></i>
+            </button>
+        </div>
+
+        <!-- Platform status -->
+        <div x-show="sidebarOpen" class="px-4 py-2.5 bg-slate-950/60 border-b border-cyber-border/40 flex items-center justify-between text-[11px] font-data">
+            <div class="flex items-center gap-2">
+                <span class="beacon-pulse beacon-green"></span>
+                <span class="text-cyber-green font-bold">FORENSIC RUNTIME</span>
+            </div>
+            <span class="text-slate-500 font-mono">READY</span>
+        </div>
+
+        <!-- Main Navigation Links -->
+        <nav class="flex-1 overflow-y-auto py-3 px-2 space-y-1">
+            <div x-show="sidebarOpen" class="px-3 pt-2 pb-1 text-[10px] font-data uppercase tracking-widest text-slate-500">
+                WORKSPACE
+            </div>
+            
+            <ul>
+                <li>
+                    <a href="/dashboard" 
+                       class="flex items-center gap-3 px-3 py-2 rounded text-xs font-hud font-semibold uppercase tracking-wider transition-all duration-200 group {% if request.path == '/dashboard' %}bg-cyan-950/40 text-cyber-cyan border-l-2 border-cyber-cyan shadow-[inset_0_0_12px_rgba(0,240,255,0.1)] font-bold{% else %}text-slate-400 hover:text-white hover:bg-slate-800/40 hover:border-l-2 hover:border-slate-500{% endif %}" 
+                       title="Dashboard">
+                        <i class="fa-solid fa-radar w-5 text-center text-sm group-hover:text-cyber-cyan transition-colors"></i>
+                        <span x-show="sidebarOpen" class="truncate">Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/investigations" 
+                       class="flex items-center gap-3 px-3 py-2 rounded text-xs font-hud font-semibold uppercase tracking-wider transition-all duration-200 group {% if '/investigations' in request.path %}bg-cyan-950/40 text-cyber-cyan border-l-2 border-cyber-cyan shadow-[inset_0_0_12px_rgba(0,240,255,0.1)] font-bold{% else %}text-slate-400 hover:text-white hover:bg-slate-800/40 hover:border-l-2 hover:border-slate-500{% endif %}" 
+                       title="Investigations">
+                        <i class="fa-solid fa-folder-tree w-5 text-center text-sm group-hover:text-cyber-cyan transition-colors"></i>
+                        <span x-show="sidebarOpen" class="truncate">Investigate</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/endpoints" 
+                       class="flex items-center gap-3 px-3 py-2 rounded text-xs font-hud font-semibold uppercase tracking-wider transition-all duration-200 group {% if request.path == '/endpoints' %}bg-cyan-950/40 text-cyber-cyan border-l-2 border-cyber-cyan shadow-[inset_0_0_12px_rgba(0,240,255,0.1)] font-bold{% else %}text-slate-400 hover:text-white hover:bg-slate-800/40 hover:border-l-2 hover:border-slate-500{% endif %}" 
+                       title="Endpoints">
+                        <i class="fa-solid fa-network-wired w-5 text-center text-sm group-hover:text-cyber-cyan transition-colors"></i>
+                        <span x-show="sidebarOpen" class="truncate">Endpoints</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/evidence" 
+                       class="flex items-center gap-3 px-3 py-2 rounded text-xs font-hud font-semibold uppercase tracking-wider transition-all duration-200 group {% if request.path == '/evidence' %}bg-cyan-950/40 text-cyber-cyan border-l-2 border-cyber-cyan shadow-[inset_0_0_12px_rgba(0,240,255,0.1)] font-bold{% else %}text-slate-400 hover:text-white hover:bg-slate-800/40 hover:border-l-2 hover:border-slate-500{% endif %}" 
+                       title="Evidence">
+                        <i class="fa-solid fa-database w-5 text-center text-sm group-hover:text-cyber-cyan transition-colors"></i>
+                        <span x-show="sidebarOpen" class="truncate">Evidence</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/iocs" 
+                       class="flex items-center gap-3 px-3 py-2 rounded text-xs font-hud font-semibold uppercase tracking-wider transition-all duration-200 group {% if request.path == '/iocs' %}bg-cyan-950/40 text-cyber-cyan border-l-2 border-cyber-cyan shadow-[inset_0_0_12px_rgba(0,240,255,0.1)] font-bold{% else %}text-slate-400 hover:text-white hover:bg-slate-800/40 hover:border-l-2 hover:border-slate-500{% endif %}" 
+                       title="IOC Findings">
+                        <i class="fa-solid fa-triangle-exclamation w-5 text-center text-sm group-hover:text-cyber-red transition-colors"></i>
+                        <span x-show="sidebarOpen" class="truncate">Findings</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/relationships" 
+                       class="flex items-center gap-3 px-3 py-2 rounded text-xs font-hud font-semibold uppercase tracking-wider transition-all duration-200 group {% if request.path == '/relationships' %}bg-cyan-950/40 text-cyber-cyan border-l-2 border-cyber-cyan shadow-[inset_0_0_12px_rgba(0,240,255,0.1)] font-bold{% else %}text-slate-400 hover:text-white hover:bg-slate-800/40 hover:border-l-2 hover:border-slate-500{% endif %}" 
+                       title="Relationships">
+                        <i class="fa-solid fa-project-diagram w-5 text-center text-sm group-hover:text-cyber-cyan transition-colors"></i>
+                        <span x-show="sidebarOpen" class="truncate">Correlation</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/timeline" 
+                       class="flex items-center gap-3 px-3 py-2 rounded text-xs font-hud font-semibold uppercase tracking-wider transition-all duration-200 group {% if request.path == '/timeline' %}bg-cyan-950/40 text-cyber-cyan border-l-2 border-cyber-cyan shadow-[inset_0_0_12px_rgba(0,240,255,0.1)] font-bold{% else %}text-slate-400 hover:text-white hover:bg-slate-800/40 hover:border-l-2 hover:border-slate-500{% endif %}" 
+                       title="Timeline">
+                        <i class="fa-solid fa-clock-rotate-left w-5 text-center text-sm group-hover:text-cyber-cyan transition-colors"></i>
+                        <span x-show="sidebarOpen" class="truncate">Timeline</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/editor" 
+                       class="flex items-center gap-3 px-3 py-2 rounded text-xs font-hud font-semibold uppercase tracking-wider transition-all duration-200 group {% if request.path == '/editor' %}bg-cyan-950/40 text-cyber-cyan border-l-2 border-cyber-cyan shadow-[inset_0_0_12px_rgba(0,240,255,0.1)] font-bold{% else %}text-slate-400 hover:text-white hover:bg-slate-800/40 hover:border-l-2 hover:border-slate-500{% endif %}" 
+                       title="JOCKY DSL Compiler & IDE">
+                        <i class="fa-solid fa-terminal w-5 text-center text-sm group-hover:text-cyber-green transition-colors"></i>
+                        <span x-show="sidebarOpen" class="truncate">JOCKY Studio</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/reports" 
+                       class="flex items-center gap-3 px-3 py-2 rounded text-xs font-hud font-semibold uppercase tracking-wider transition-all duration-200 group {% if request.path == '/reports' %}bg-cyan-950/40 text-cyber-cyan border-l-2 border-cyber-cyan shadow-[inset_0_0_12px_rgba(0,240,255,0.1)] font-bold{% else %}text-slate-400 hover:text-white hover:bg-slate-800/40 hover:border-l-2 hover:border-slate-500{% endif %}" 
+                       title="Forensic Reports">
+                        <i class="fa-solid fa-file-shield w-5 text-center text-sm group-hover:text-cyber-cyan transition-colors"></i>
+                        <span x-show="sidebarOpen" class="truncate">Reports</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/audit" 
+                       class="flex items-center gap-3 px-3 py-2 rounded text-xs font-hud font-semibold uppercase tracking-wider transition-all duration-200 group {% if request.path == '/audit' %}bg-cyan-950/40 text-cyber-cyan border-l-2 border-cyber-cyan shadow-[inset_0_0_12px_rgba(0,240,255,0.1)] font-bold{% else %}text-slate-400 hover:text-white hover:bg-slate-800/40 hover:border-l-2 hover:border-slate-500{% endif %}" 
+                       title="Audit & Chain of Custody">
+                        <i class="fa-solid fa-shield-halved w-5 text-center text-sm group-hover:text-cyber-cyan transition-colors"></i>
+                        <span x-show="sidebarOpen" class="truncate">Audit Trail</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/health" 
+                       class="flex items-center gap-3 px-3 py-2 rounded text-xs font-hud font-semibold uppercase tracking-wider transition-all duration-200 group {% if request.path == '/health' %}bg-cyan-950/40 text-cyber-cyan border-l-2 border-cyber-cyan shadow-[inset_0_0_12px_rgba(0,240,255,0.1)] font-bold{% else %}text-slate-400 hover:text-white hover:bg-slate-800/40 hover:border-l-2 hover:border-slate-500{% endif %}" 
+                       title="System Health">
+                        <i class="fa-solid fa-heart-pulse w-5 text-center text-sm group-hover:text-cyber-green transition-colors"></i>
+                        <span x-show="sidebarOpen" class="truncate">System Health</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/settings" 
+                       class="flex items-center gap-3 px-3 py-2 rounded text-xs font-hud font-semibold uppercase tracking-wider transition-all duration-200 group {% if request.path == '/settings' %}bg-cyan-950/40 text-cyber-cyan border-l-2 border-cyber-cyan shadow-[inset_0_0_12px_rgba(0,240,255,0.1)] font-bold{% else %}text-slate-400 hover:text-white hover:bg-slate-800/40 hover:border-l-2 hover:border-slate-500{% endif %}" 
+                       title="Settings">
+                        <i class="fa-solid fa-gear w-5 text-center text-sm group-hover:text-cyber-cyan transition-colors"></i>
+                        <span x-show="sidebarOpen" class="truncate">Settings</span>
+                    </a>
+                </li>
+            </ul>
+
+        </nav>
+        
+        <!-- Sidebar Footer Telemetry -->
+        <div class="p-3 border-t border-cyber-border/80 bg-cyber-dark/60 text-[10px] font-data text-slate-400 flex flex-col gap-1">
+            <div class="flex items-center justify-between" x-show="sidebarOpen">
+                <span class="text-slate-500">KERNEL:</span>
+                <span class="text-cyber-cyan">LLVM 18 // JKY-IR</span>
+            </div>
+            <div class="flex items-center justify-between" x-show="sidebarOpen">
+                <span class="text-slate-500">INTEGRITY:</span>
+                <span class="text-cyber-green font-mono">SHA-256 VERIFIED</span>
+            </div>
+            <div class="text-center text-[9px] text-slate-500 mt-1 font-mono">
+                PROGRAMMABLE DIGITAL FORENSICS
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Command Center Viewport -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
+        
+        <!-- Top Command Header / HUD Bar -->
+        <header class="h-16 hud-panel border-b border-cyber-border flex items-center justify-between px-6 z-20 bg-cyber-surface/90">
+            
+            <!-- Breadcrumbs / Page Identifier -->
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2 text-xs font-data">
+                    <span class="text-slate-500">JOCKY /</span>
+                    <span class="text-cyber-green">FORENSICS</span>
+                    <span class="text-white font-hud font-bold text-sm tracking-wider uppercase">{% block header_title %}COMMAND CENTER{% endblock %}</span>
+                </div>
+            </div>
+            
+            <!-- Center Live Telemetry Bar -->
+            <div class="hidden xl:flex items-center gap-6 text-xs font-data">
+                <div class="flex items-center gap-2 bg-slate-900/60 px-3 py-1 border border-slate-800 rounded">
+                    <span class="text-slate-500">UTC:</span>
+                    <span class="text-cyber-cyan font-mono" x-text="utcTime">--:--:-- UTC</span>
+                </div>
+                <div class="flex items-center gap-2 bg-slate-900/60 px-3 py-1 border border-slate-800 rounded">
+                    <span class="text-slate-500">NODE STATUS:</span>
+                    <span class="flex items-center gap-1.5 text-cyber-green">
+                        <span class="w-2 h-2 rounded-full bg-cyber-green animate-ping"></span>
+                        AVAILABLE
+                    </span>
+                </div>
+                <div class="flex items-center gap-2 bg-slate-900/60 px-3 py-1 border border-slate-800 rounded">
+                    <span class="text-slate-500">CHANNEL:</span>
+                    <span class="text-slate-300 font-mono">ENCRYPTED TLS 1.3</span>
+                </div>
+            </div>
+            
+            <!-- Right Controls: Threat Meter & User Console -->
+            <div class="flex items-center gap-4">
+                
+                <!-- Quick Trigger Terminal Button -->
+                <a href="/editor" class="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 bg-cyber-green/10 border border-cyber-green/40 hover:bg-cyber-green/20 text-cyber-green text-xs font-hud tracking-wider rounded transition-all shadow-[0_0_10px_rgba(0,255,157,0.15)]">
+                    <i class="fa-solid fa-code"></i>
+                    <span>OPEN STUDIO</span>
+                </a>
+
+                
+                <!-- User Operator Menu -->
+                <div class="relative">
+                    <button @click="userDropdownOpen = !userDropdownOpen" 
+                            @click.away="userDropdownOpen = false" 
+                            class="flex items-center gap-2.5 px-3 py-1.5 bg-slate-900/80 border border-cyber-border rounded hover:border-cyber-cyan transition-all focus:outline-none">
+                        <div class="w-7 h-7 rounded bg-cyan-950/60 border border-cyber-cyan/50 flex items-center justify-center text-xs font-bold text-cyber-cyan">
+                            <i class="fa-solid fa-user-secret"></i>
+                        </div>
+                        <div class="flex flex-col text-left">
+                            <span class="text-xs font-hud font-bold text-white tracking-wide" x-text="window.appState.user?.name || 'Lead Investigator'"></span>
+                            <span class="text-[9px] font-data text-cyber-cyan">FORENSIC ANALYST</span>
+                        </div>
+                        <i class="fa-solid fa-chevron-down text-[10px] text-slate-500 ml-1"></i>
+                    </button>
+                    
+                    <div x-show="userDropdownOpen" 
+                         x-transition 
+                         class="absolute right-0 mt-2 w-52 hud-panel bg-cyber-surface border border-cyber-border rounded shadow-2xl py-1 z-50 font-data text-xs"
+                         style="display: none;">
+                        <div class="px-4 py-2 border-b border-slate-800 text-[10px] text-slate-500 uppercase tracking-widest">
+                            Authorized Session
+                        </div>
+                        <a href="#" class="block px-4 py-2 text-slate-300 hover:bg-cyan-950/30 hover:text-cyber-cyan transition-colors flex items-center gap-2">
+                            <i class="fa-solid fa-fingerprint text-cyber-cyan w-4"></i> Security Clearance
+                        </a>
+                        <a href="/docs" target="_blank" class="block px-4 py-2 text-slate-300 hover:bg-cyan-950/30 hover:text-cyber-cyan transition-colors flex items-center gap-2">
+                            <i class="fa-solid fa-book-skull text-cyber-green w-4"></i> API Telemetry Specs
+                        </a>
+                        <div class="border-t border-slate-800 my-1"></div>
+                        <a href="#" @click.prevent="window.appState.logout()" class="block px-4 py-2 text-cyber-red hover:bg-red-950/30 transition-colors flex items-center gap-2 font-bold">
+                            <i class="fa-solid fa-power-off w-4"></i> Terminate Session
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Page Content Viewport -->
+        <main class="flex-1 overflow-y-auto p-6 relative">
+            {% block content %}{% endblock %}
+        </main>
+        
+    </div>
+
+    <!-- Real-time Cyber Security Toast Stream -->
+    <div x-data="{ toasts: [] }" 
+         @toast.window="
+            const newToast = {
+                id: Date.now(),
+                message: $event.detail.message,
+                type: $event.detail.type || 'info'
+            };
+            toasts.push(newToast);
+            setTimeout(() => { toasts = toasts.filter(t => t.id !== newToast.id) }, 4500);
+         "
+         class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none">
+        <template x-for="toast in toasts" :key="toast.id">
+            <div class="min-w-[320px] max-w-md hud-panel hud-corner-brackets p-3.5 border-l-4 rounded pointer-events-auto flex items-start gap-3 shadow-2xl transition-all"
+                 :class="{
+                     'border-l-cyber-green bg-slate-950/95': toast.type === 'success',
+                     'border-l-cyber-red bg-slate-950/95': toast.type === 'error',
+                     'border-l-cyber-cyan bg-slate-950/95': toast.type === 'info',
+                     'border-l-cyber-amber bg-slate-950/95': toast.type === 'warning'
+                 }">
+                
+                <div class="mt-0.5 text-sm">
+                    <i class="fa-solid" :class="{
+                        'fa-shield-halved text-cyber-green': toast.type === 'success',
+                        'fa-triangle-exclamation text-cyber-red animate-pulse': toast.type === 'error',
+                        'fa-satellite-dish text-cyber-cyan': toast.type === 'info',
+                        'fa-circle-radiation text-cyber-amber': toast.type === 'warning'
+                    }"></i>
+                </div>
+                <div class="flex-1">
+                    <div class="text-[10px] font-data tracking-wider uppercase font-bold" 
+                         :class="{
+                             'text-cyber-green': toast.type === 'success',
+                             'text-cyber-red': toast.type === 'error',
+                             'text-cyber-cyan': toast.type === 'info',
+                             'text-cyber-amber': toast.type === 'warning'
+                         }" x-text="toast.type === 'error' ? '[!] THREAT ALERT' : '[+] SYSTEM EVENT'"></div>
+                    <p class="text-xs font-mono text-slate-200 mt-0.5" x-text="toast.message"></p>
+                </div>
+                <button @click="toasts = toasts.filter(t => t.id !== toast.id)" class="text-slate-500 hover:text-white">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+            </div>
+        </template>
+    </div>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

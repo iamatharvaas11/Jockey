@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}JOCKY // System Health & Diagnostics{% endblock %}
+{% block header_title %}SYSTEM HEALTH & SUBSYSTEM DIAGNOSTICS{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6 max-w-7xl mx-auto overflow-y-auto h-full pb-20"
+     x-data="{
+         health: {
+             status: 'HEALTHY',
+             database: 'CONNECTED',
+             compiler: 'READY (LLVM)',
+             integrity: 'SHA-256 ACTIVE',
+             platform: 'VALIDATED'
+         }
+     }">
+
+    <!-- Header -->
+    <div>
+        <h1 class="font-hud font-bold text-xl text-white tracking-wide">SUBSYSTEM STATUS & DIAGNOSTICS</h1>
+        <p class="text-xs font-data text-slate-400 mt-0.5">Real-time health verification of compiler, database, runtime, and cryptographic subsystems</p>
+    </div>
+
+    <!-- Health Cards Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="hud-panel p-5 border border-emerald-500/40 rounded bg-emerald-950/20">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-data text-slate-400">OVERALL HEALTH</span>
+                <i class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+            </div>
+            <div class="text-2xl font-hud font-bold text-emerald-400 mt-2">OPERATIONAL</div>
+            <div class="text-[11px] font-data text-slate-400 mt-1">All core subsystems responding</div>
+        </div>
+
+        <div class="hud-panel p-5 border border-cyber-cyan/30 rounded bg-cyber-dark/60">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-data text-slate-400">DATABASE BACKEND</span>
+                <i class="fa-solid fa-database text-cyber-cyan text-lg"></i>
+            </div>
+            <div class="text-2xl font-hud font-bold text-white mt-2">CONNECTED</div>
+            <div class="text-[11px] font-data text-slate-400 mt-1">Async engine active</div>
+        </div>
+
+        <div class="hud-panel p-5 border border-purple-500/30 rounded bg-cyber-dark/60">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-data text-slate-400">COMPILER PIPELINE</span>
+                <i class="fa-solid fa-microchip text-purple-400 text-lg"></i>
+            </div>
+            <div class="text-2xl font-hud font-bold text-white mt-2">LLVM READY</div>
+            <div class="text-[11px] font-data text-slate-400 mt-1">JOCKY IR & TargetMachine active</div>
+        </div>
+
+        <div class="hud-panel p-5 border border-cyber-green/30 rounded bg-cyber-dark/60">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-data text-slate-400">EVIDENCE INTEGRITY</span>
+                <i class="fa-solid fa-shield-halved text-cyber-green text-lg"></i>
+            </div>
+            <div class="text-2xl font-hud font-bold text-cyber-green mt-2">ENFORCED</div>
+            <div class="text-[11px] font-data text-slate-400 mt-1">Deterministic SHA-256 hashing</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

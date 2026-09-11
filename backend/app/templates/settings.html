@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}JOCKY // System Settings & Security Policy{% endblock %}
+{% block header_title %}FRAMEWORK SETTINGS & POLICIES{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6 max-w-4xl mx-auto overflow-y-auto h-full pb-20">
+    <div>
+        <h1 class="font-hud font-bold text-xl text-white tracking-wide">FRAMEWORK CONFIGURATION & SECURITY POLICIES</h1>
+        <p class="text-xs font-data text-slate-400 mt-0.5">Global configuration, audit retention, and RBAC policies</p>
+    </div>
+
+    <div class="space-y-4">
+        <div class="p-5 bg-cyber-dark/80 border border-cyber-border rounded">
+            <h2 class="text-sm font-hud font-bold text-white uppercase mb-2">Cryptographic Verification Policy</h2>
+            <p class="text-xs font-data text-slate-400 mb-3">Enforce SHA-256 integrity verification across all evidence ingestion routes.</p>
+            <div class="flex items-center gap-2">
+                <span class="px-2 py-1 bg-emerald-950/60 text-emerald-400 text-xs font-bold font-mono border border-emerald-500/30 rounded">STRICT VERIFICATION ACTIVE</span>
+            </div>
+        </div>
+
+        <div class="p-5 bg-cyber-dark/80 border border-cyber-border rounded">
+            <h2 class="text-sm font-hud font-bold text-white uppercase mb-2">Role-Based Access Control (RBAC)</h2>
+            <p class="text-xs font-data text-slate-400 mb-3">Roles configured: ADMIN, ANALYST, VIEWER.</p>
+            <div class="text-xs font-mono text-slate-300 space-y-1">
+                <div>&bull; <strong class="text-white">ADMIN:</strong> Full system control, user management, and destructive operations.</div>
+                <div>&bull; <strong class="text-white">ANALYST:</strong> Case creation, artifact uploads, DSL execution, report generation.</div>
+                <div>&bull; <strong class="text-white">VIEWER:</strong> Read-only access to investigations, evidence, timelines, and audit logs.</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

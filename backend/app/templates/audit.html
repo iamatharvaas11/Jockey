@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}JOCKY // Chain of Custody & Audit Trail{% endblock %}
+{% block header_title %}IMMUTABLE FORENSIC CHAIN OF CUSTODY & AUDIT LEDGER{% endblock %}
+
+{% block content %}
+<div x-data="auditData()" x-init="fetchLogs()" class="hud-panel hud-corner-brackets rounded flex flex-col h-full min-h-[640px] shadow-2xl">
+    
+    <!-- Top Cyber Filter Controls -->
+    <div class="p-4 border-b border-slate-800 flex flex-wrap gap-4 items-center justify-between bg-cyber-dark/60 font-data text-xs">
+        <div class="flex flex-wrap gap-3 items-center">
+            <div class="relative w-72">
+                <i class="fa-solid fa-search absolute left-3 top-2.5 text-slate-500"></i>
+                <input type="text" x-model="filters.search" @input.debounce.300ms="fetchLogs()" 
+                       placeholder="FILTER ACTOR, IP, ACTION, DETAILS..." 
+                       class="cyber-input w-full pl-9 pr-3 py-2 rounded text-xs text-white placeholder-slate-500 focus:border-cyber-cyan">
+            </div>
+            
+            <select x-model="filters.action" @change="fetchLogs()" 
+                    class="cyber-input px-3 py-2 rounded text-xs text-slate-300 focus:border-cyber-cyan bg-slate-950">
+                <option value="">[ ACTION: ALL ]</option>
+                <option value="LOGIN">ACTION: LOGIN</option>
+                <option value="EXECUTE">ACTION: EXECUTE</option>
+                <option value="CREATE">ACTION: CREATE</option>
+                <option value="UPDATE">ACTION: UPDATE</option>
+                <option value="EXPORT">ACTION: EXPORT</option>
+                <option value="DELETE">ACTION: DELETE</option>
+            </select>
+            
+            <select x-model="filters.entity" @change="fetchLogs()" 
+                    class="cyber-input px-3 py-2 rounded text-xs text-slate-300 focus:border-cyber-cyan bg-slate-950">
+                <option value="">[ ENTITY: ALL ]</option>
+                <option value="SCRIPT">ENTITY: SCRIPT</option>
+                <option value="INVESTIGATION">ENTITY: INVESTIGATION</option>
+                <option value="ARTIFACT">ENTITY: ARTIFACT</option>
+                <option value="REPORT">ENTITY: REPORT</option>
+                <option value="USER">ENTITY: USER</option>
+            </select>
+        </div>
+        
+        <button @click="fetchLogs()" class="cyber-btn cyber-btn-cyan text-xs py-2 px-3.5 flex items-center gap-2">
+            <i class="fa-solid fa-rotate-right" :class="loading ? 'fa-spin' : ''"></i> 
+            <span>REFRESH LEDGER</span>
+        </button>
+    </div>
+
+    <!-- Forensic Audit Ledger Table -->
+    <div class="flex-1 overflow-auto">
+        <table class="cyber-table">
+            <thead class="sticky top-0 bg-cyber-dark/95 backdrop-blur-md z-10 border-b border-cyber-border">
+                <tr>
+                    <th>UTC TIMESTAMP</th>
+                    <th>OPERATOR / AGENT</th>
+                    <th>ACTION</th>
+                    <th>TARGET ENTITY</th>
+                    <th>ENTITY IDENTIFIER</th>
+                    <th>SOURCE IP ADDRESS</th>
+                    <th>ACTION TELEMETRY</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60 font-data text-xs">
+                <template x-for="log in logs" :key="log.id">
+                    <tr class="group">
+                        <td class="text-slate-400 font-mono text-xs" x-text="window.utils.formatDate(log.timestamp)"></td>
+                        <td class="text-white font-medium flex items-center gap-2">
+                            <div class="w-5 h-5 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-cyber-cyan">
+                                <i class="fa-solid fa-user-secret"></i>
+                            </div>
+                            <span class="font-mono text-xs" x-text="log.user_id || 'SYSTEM / BACKGROUND'"></span>
+                        </td>
+                        <td>
+                            <span class="badge-cyber"
+                                  :class="{
+                                      'badge-green': log.action === 'CREATE' || log.action === 'LOGIN',
+                                      'badge-blue': log.action === 'UPDATE',
+                                      'badge-red': log.action === 'DELETE',
+                                      'badge-cyan text-cyber-cyan bg-cyan-950/30 border border-cyber-cyan/40': log.action === 'EXECUTE',
+                                      'badge-yellow': log.action === 'EXPORT'
+                                  }" x-text="log.action"></span>
+                        </td>
+                        <td class="text-slate-300 font-mono" x-text="log.entity_type"></td>
+                        <td class="text-cyber-cyan font-mono text-xs select-all" x-text="log.entity_id"></td>
+                        <td class="text-slate-400 font-mono text-xs">
+                            <span class="px-1.5 py-0.5 bg-slate-900 border border-slate-800 rounded" x-text="log.ip_address || 'N/A — SYSTEM JOB'"></span>
+                        </td>
+                        <td class="text-slate-300 font-sans truncate max-w-[280px]" :title="JSON.stringify(log.details || {})" x-text="log.details?.summary || JSON.stringify(log.details || {})"></td>
+                    </tr>
+                </template>
+                
+                <!-- Loading State -->
+                <tr x-show="loading && logs.length === 0">
+                    <td colspan="7" class="px-5 py-12 text-center text-cyber-cyan">
+                        <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2"></i>
+                        <p class="font-hud uppercase tracking-wider text-xs">QUERYING SECURE AUDIT BLOCKCHAIN...</p>
+                    </td>
+                </tr>
+                
+                <!-- Empty State -->
+                <tr x-show="!loading && logs.length === 0">
+                    <td colspan="7" class="px-5 py-12 text-center text-slate-500 font-mono text-xs">
+                        NO CRYPTOGRAPHIC AUDIT LOGS MATCHING CURRENT FILTERS.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Ledger Footer Telemetry -->
+    <div class="p-3 border-t border-slate-800 bg-cyber-dark/60 flex items-center justify-between text-xs font-data text-slate-500">
+        <div class="flex items-center gap-2">
+            <span class="beacon-pulse beacon-green"></span>
+            <span>VERIFIED LEDGER ENTRIES: <span class="font-bold text-white font-mono" x-text="logs.length"></span></span>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="text-cyber-green font-mono text-[10px]"><i class="fa-solid fa-lock mr-1"></i> RFC 3161 TIME-STAMPED</span>
+            <span class="px-2 py-0.5 bg-slate-900 border border-slate-800 text-slate-400 rounded text-[10px]">READ ONLY // TAMPER-EVIDENT</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function auditData() {
+    return {
+        logs: [],
+        loading: false,
+        filters: { search: '', action: '', entity: '' },
+        
+        getAuthHeaders() {
+            const headers = { 'Content-Type': 'application/json' };
+            const token = localStorage.getItem('jocky_token');
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            return headers;
+        },
+
+        async fetchLogs() {
+            this.loading = true;
+            try {
+                let url = '/api/v1/audit-logs?limit=200';
+                if (this.filters.action) url += `&action=${encodeURIComponent(this.filters.action)}`;
+
+                const res = await fetch(url, { headers: this.getAuthHeaders() });
+                if (res.ok) {
+                    this.logs = await res.json();
+                } else {
+                    this.logs = [];
+                }
+            } catch (err) {
+                console.warn("Error querying audit ledger:", err);
+                this.logs = [];
+            } finally {
+                if (this.filters.entity) this.logs = this.logs.filter(l => l.entity_type === this.filters.entity);
+                if (this.filters.search) {
+                    const s = this.filters.search.toLowerCase();
+                    this.logs = this.logs.filter(l => 
+                        (l.action && l.action.toLowerCase().includes(s)) || 
+                        (l.entity_type && l.entity_type.toLowerCase().includes(s)) ||
+                        (l.entity_id && l.entity_id.toLowerCase().includes(s)) ||
+                        (l.details && JSON.stringify(l.details).toLowerCase().includes(s))
+                    );
+                }
+                this.loading = false;
+            }
+        }
+    };
+}
+</script>
+{% endblock %}

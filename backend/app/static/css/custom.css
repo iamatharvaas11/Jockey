@@ -1,0 +1,684 @@
+/* ==========================================================================
+   JOCKY ELITE FORENSICS & CYBER-SECURITY COMMAND CENTER DESIGN SYSTEM
+   Theme: Classified SOC / Futuristic Intelligence Platform / Cyberpunk HUD
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --neon-green: #00ff9d;
+  --neon-green-glow: rgba(0, 255, 157, 0.35);
+  --neon-green-dim: rgba(0, 255, 157, 0.12);
+  
+  --neon-cyan: #00f0ff;
+  --neon-cyan-glow: rgba(0, 240, 255, 0.35);
+  --neon-cyan-dim: rgba(0, 240, 255, 0.12);
+  
+  --neon-blue: #38bdf8;
+  --neon-blue-glow: rgba(56, 189, 248, 0.3);
+  
+  --neon-red: #ff2a5f;
+  --neon-red-glow: rgba(255, 42, 95, 0.4);
+  --neon-red-dim: rgba(255, 42, 95, 0.12);
+  
+  --neon-amber: #f59e0b;
+  --neon-amber-glow: rgba(245, 158, 11, 0.35);
+  
+  --bg-core: #04070e;
+  --bg-surface: #070c18;
+  --bg-panel: rgba(10, 17, 32, 0.82);
+  --bg-panel-elevated: rgba(14, 23, 42, 0.9);
+  
+  --border-subtle: rgba(30, 58, 102, 0.45);
+  --border-glow: rgba(0, 240, 255, 0.25);
+  --border-green: rgba(0, 255, 157, 0.3);
+
+  --font-hud: 'Orbitron', 'Rajdhani', sans-serif;
+  --font-data: 'Share Tech Mono', 'JetBrains Mono', monospace;
+  --font-sans: 'Inter', -apple-system, sans-serif;
+}
+
+/* --------------------------------------------------------------------------
+   BASE SYSTEM & BACKGROUND
+   -------------------------------------------------------------------------- */
+html, body {
+  background-color: var(--bg-core);
+  color: #cbd5e1;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+/* Subtle Cyber Grid Matrix Pattern */
+.cyber-grid-bg {
+  background-color: var(--bg-core);
+  background-image: 
+    linear-gradient(to right, rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Ambient Radial Cyber Glow */
+.cyber-radial-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.05) 0%, transparent 60%),
+              radial-gradient(circle at 100% 100%, rgba(0, 255, 157, 0.03) 0%, transparent 50%);
+  z-index: 1;
+}
+
+/* CRT Scanline Effect (Ultra Subtle) */
+.scanline-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.2) 50%
+  );
+  background-size: 100% 4px;
+  z-index: 99;
+  opacity: 0.15;
+}
+
+/* --------------------------------------------------------------------------
+   HUD PANELS & GLASSMORPHISM
+   -------------------------------------------------------------------------- */
+.hud-panel {
+  background: var(--bg-panel);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+  position: relative;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 0 1px 1px rgba(255, 255, 255, 0.03);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hud-panel:hover {
+  border-color: rgba(0, 240, 255, 0.3);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 240, 255, 0.05);
+}
+
+/* Corner Bracket Accents */
+.hud-corner-brackets {
+  position: relative;
+}
+.hud-corner-brackets::before,
+.hud-corner-brackets::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  pointer-events: none;
+  z-index: 10;
+}
+.hud-corner-brackets::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid var(--neon-cyan);
+  border-left: 2px solid var(--neon-cyan);
+}
+.hud-corner-brackets::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid var(--neon-cyan);
+  border-right: 2px solid var(--neon-cyan);
+}
+
+/* Chamfered Cyber Panel */
+.cyber-chamfer {
+  clip-path: polygon(
+    0 0, 
+    calc(100% - 10px) 0, 
+    100% 10px, 
+    100% 100%, 
+    10px 100%, 
+    0 calc(100% - 10px)
+  );
+}
+
+/* --------------------------------------------------------------------------
+   TELEMETRY & HUD TYPOGRAPHY
+   -------------------------------------------------------------------------- */
+.font-hud {
+  font-family: var(--font-hud);
+  letter-spacing: 0.08em;
+}
+
+.font-data {
+  font-family: var(--font-data);
+}
+
+.glow-green {
+  text-shadow: 0 0 8px var(--neon-green-glow);
+}
+
+.glow-cyan {
+  text-shadow: 0 0 8px var(--neon-cyan-glow);
+}
+
+.glow-red {
+  text-shadow: 0 0 8px var(--neon-red-glow);
+}
+
+/* Telemetry Badge Header */
+.hud-telemetry-tag {
+  font-family: var(--font-data);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  padding: 0.15rem 0.5rem;
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  color: var(--neon-cyan);
+  border-radius: 2px;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* --------------------------------------------------------------------------
+   ILLUMINATED CYBER CONTROLS & BUTTONS
+   -------------------------------------------------------------------------- */
+.cyber-btn {
+  position: relative;
+  font-family: var(--font-hud);
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.55rem 1.25rem;
+  background: rgba(0, 255, 157, 0.1);
+  color: var(--neon-green);
+  border: 1px solid var(--neon-green);
+  border-radius: 3px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 0 10px rgba(0, 255, 157, 0.15);
+}
+
+.cyber-btn:hover {
+  background: var(--neon-green);
+  color: #04070e;
+  box-shadow: 0 0 20px var(--neon-green-glow), 0 0 40px rgba(0, 255, 157, 0.2);
+  transform: translateY(-1px);
+}
+
+.cyber-btn:active {
+  transform: translateY(1px);
+}
+
+.cyber-btn-cyan {
+  background: rgba(0, 240, 255, 0.08);
+  color: var(--neon-cyan);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.15);
+}
+
+.cyber-btn-cyan:hover {
+  background: var(--neon-cyan);
+  color: #04070e;
+  box-shadow: 0 0 20px var(--neon-cyan-glow);
+}
+
+.cyber-btn-red {
+  background: rgba(255, 42, 95, 0.1);
+  color: var(--neon-red);
+  border-color: var(--neon-red);
+  box-shadow: 0 0 10px rgba(255, 42, 95, 0.15);
+}
+
+.cyber-btn-red:hover {
+  background: var(--neon-red);
+  color: #ffffff;
+  box-shadow: 0 0 20px var(--neon-red-glow);
+}
+
+.cyber-btn-dark {
+  background: rgba(15, 23, 42, 0.8);
+  color: #94a3b8;
+  border-color: rgba(51, 65, 85, 0.8);
+  font-family: var(--font-hud);
+}
+
+.cyber-btn-dark:hover {
+  background: rgba(30, 41, 59, 0.9);
+  color: #f8fafc;
+  border-color: var(--neon-cyan);
+}
+
+/* --------------------------------------------------------------------------
+   3D PERSPECTIVE & DEPTH CARDS
+   -------------------------------------------------------------------------- */
+.perspective-container {
+  perspective: 1200px;
+}
+
+.cyber-card-3d {
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+  transform-style: preserve-3d;
+}
+
+.cyber-card-3d:hover {
+  transform: translateY(-4px) rotateX(2deg);
+  border-color: var(--border-glow);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 240, 255, 0.12);
+}
+
+/* --------------------------------------------------------------------------
+   STATUS BEACONS & PULSE SIGNALS
+   -------------------------------------------------------------------------- */
+.beacon-pulse {
+  position: relative;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.beacon-pulse::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  animation: beacon-ring 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
+}
+
+.beacon-green {
+  background-color: var(--neon-green);
+  box-shadow: 0 0 8px var(--neon-green);
+}
+.beacon-green::after {
+  border: 1.5px solid var(--neon-green);
+}
+
+.beacon-red {
+  background-color: var(--neon-red);
+  box-shadow: 0 0 8px var(--neon-red);
+}
+.beacon-red::after {
+  border: 1.5px solid var(--neon-red);
+}
+
+.beacon-cyan {
+  background-color: var(--neon-cyan);
+  box-shadow: 0 0 8px var(--neon-cyan);
+}
+.beacon-cyan::after {
+  border: 1.5px solid var(--neon-cyan);
+}
+
+@keyframes beacon-ring {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* --------------------------------------------------------------------------
+   CYBER FORENSIC TABLES
+   -------------------------------------------------------------------------- */
+.cyber-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.cyber-table thead th {
+  background: rgba(8, 14, 26, 0.9);
+  font-family: var(--font-hud);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #64748b;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+  padding: 0.85rem 1.2rem;
+}
+
+.cyber-table tbody tr {
+  background: transparent;
+  transition: all 0.15s ease;
+  border-bottom: 1px solid rgba(30, 41, 59, 0.4);
+}
+
+.cyber-table tbody tr:hover {
+  background: rgba(0, 240, 255, 0.04);
+  box-shadow: inset 2px 0 0 var(--neon-cyan);
+}
+
+.cyber-table tbody td {
+  padding: 0.85rem 1.2rem;
+  font-size: 0.85rem;
+  border-bottom: 1px solid rgba(30, 41, 59, 0.4);
+}
+
+/* -----------------------------------------------------------------------------
+   Print Stylesheet for Formal Forensic Reports & Dossiers
+   ----------------------------------------------------------------------------- */
+@media print {
+  html, body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+  
+  aside, 
+  header, 
+  nav, 
+  .hud-corner-brackets::before, 
+  .hud-corner-brackets::after,
+  .hud-telemetry-tag,
+  .beacon-pulse,
+  button, 
+  .cyber-btn,
+  #toast-container {
+    display: none !important;
+  }
+  
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+    width: 100% !important;
+  }
+  
+  .hud-panel {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .cyber-table th {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  .cyber-table td {
+    color: #0f172a !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  .text-white, .text-slate-300, .text-slate-400 {
+    color: #0f172a !important;
+  }
+
+  .text-cyber-green, .text-cyber-cyan {
+    color: #0f766e !important;
+  }
+
+  .text-cyber-red {
+    color: #b91c1c !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   CYBER BADGES
+   -------------------------------------------------------------------------- */
+.badge-cyber {
+  font-family: var(--font-data);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.65rem;
+  border-radius: 2px;
+  font-weight: 600;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.badge-blue {
+  background: rgba(0, 240, 255, 0.08);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.badge-green {
+  background: rgba(0, 255, 157, 0.08);
+  color: var(--neon-green);
+  border: 1px solid rgba(0, 255, 157, 0.3);
+}
+
+.badge-yellow {
+  background: rgba(245, 158, 11, 0.08);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-orange {
+  background: rgba(249, 115, 22, 0.08);
+  color: #fb923c;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+.badge-red {
+  background: rgba(255, 42, 95, 0.12);
+  color: #ff4d79;
+  border: 1px solid rgba(255, 42, 95, 0.4);
+  box-shadow: 0 0 8px rgba(255, 42, 95, 0.15);
+}
+
+.badge-gray {
+  background: rgba(100, 116, 139, 0.1);
+  color: #94a3b8;
+  border: 1px solid rgba(100, 116, 139, 0.25);
+}
+
+/* --------------------------------------------------------------------------
+   CODE EDITOR / CONSOLE TERMINAL
+   -------------------------------------------------------------------------- */
+.code-editor {
+  font-family: var(--font-data);
+  background-color: #020408;
+  color: var(--neon-green);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 0;
+  padding: 1rem;
+  resize: vertical;
+  min-height: 420px;
+  line-height: 1.6;
+  outline: none;
+  tab-size: 4;
+}
+
+.code-editor:focus {
+  border-color: var(--neon-green);
+  box-shadow: 0 0 15px rgba(0, 255, 157, 0.15), inset 0 0 10px rgba(0, 255, 157, 0.05);
+}
+
+.output-panel {
+  font-family: var(--font-data);
+  background-color: #020408;
+  color: #cbd5e1;
+  border: 1px solid rgba(0, 240, 255, 0.15);
+  border-radius: 0;
+  padding: 1rem;
+  overflow: auto;
+  font-size: 0.85rem;
+}
+
+.ast-node { color: var(--neon-cyan); }
+.ir-keyword { color: #c084fc; font-weight: bold; }
+.ir-type { color: #fde047; }
+.ir-string { color: #4ade80; }
+
+/* --------------------------------------------------------------------------
+   FORENSIC SUPER-TIMELINE
+   -------------------------------------------------------------------------- */
+.timeline-container {
+  position: relative;
+  padding-left: 2.2rem;
+}
+.timeline-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0.65rem;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--neon-cyan), rgba(30, 58, 102, 0.4));
+}
+.timeline-entry {
+  position: relative;
+  margin-bottom: 1.75rem;
+}
+.timeline-entry::before {
+  content: '';
+  position: absolute;
+  left: -2.05rem;
+  top: 0.35rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  background-color: #020408;
+  border: 2px solid var(--neon-cyan);
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+  z-index: 10;
+}
+.timeline-entry.critical::before {
+  border-color: var(--neon-red);
+  background-color: var(--neon-red);
+  box-shadow: 0 0 12px var(--neon-red-glow);
+}
+
+/* --------------------------------------------------------------------------
+   PROCESS TREE VISUALIZATION
+   -------------------------------------------------------------------------- */
+.process-tree ul {
+  list-style-type: none;
+  padding-left: 1.75rem;
+  position: relative;
+}
+.process-tree ul::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0.25rem;
+  bottom: 0;
+  width: 1px;
+  background-color: rgba(0, 240, 255, 0.25);
+}
+.process-tree li {
+  position: relative;
+  margin: 0.65rem 0;
+}
+.process-tree li::before {
+  content: '';
+  position: absolute;
+  top: 0.85rem;
+  left: -1.5rem;
+  width: 1.25rem;
+  height: 1px;
+  background-color: rgba(0, 240, 255, 0.25);
+}
+
+/* --------------------------------------------------------------------------
+   RADAR SWEEP ANIMATION (HUD DECORATION)
+   -------------------------------------------------------------------------- */
+.radar-sweep {
+  position: relative;
+  overflow: hidden;
+}
+.radar-sweep::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    from 0deg, 
+    transparent 0deg, 
+    rgba(0, 255, 157, 0.08) 60deg, 
+    transparent 60.1deg
+  );
+  border-radius: 50%;
+  animation: radar-rotate 4s linear infinite;
+  pointer-events: none;
+}
+@keyframes radar-rotate {
+  100% { transform: rotate(360deg); }
+}
+
+/* --------------------------------------------------------------------------
+   SCROLLBAR & MISC
+   -------------------------------------------------------------------------- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #04070e;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 240, 255, 0.1);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--neon-cyan);
+  box-shadow: 0 0 8px var(--neon-cyan-glow);
+}
+
+::selection {
+  background: rgba(0, 240, 255, 0.3);
+  color: #ffffff;
+}
+
+/* Glass inputs */
+.cyber-input {
+  background: rgba(4, 7, 14, 0.75);
+  border: 1px solid rgba(30, 58, 102, 0.6);
+  color: #f8fafc;
+  font-family: var(--font-data);
+  transition: all 0.2s ease;
+}
+.cyber-input:focus {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2), inset 0 0 5px rgba(0, 240, 255, 0.05);
+  outline: none;
+}
+
+/* JOCKY 2026 — dark forensic research platform */
+:root { --ink: #e6edf5; --muted: #91a0b4; --line: #26384c; --paper: #07111d; --cyan: #35d1e2; --teal: #3bc5aa; --violet: #a897ee; }
+body.jocky-shell { background: var(--paper) !important; color: var(--ink) !important; }
+body.jocky-shell::before { content: ''; position: fixed; inset: 0; pointer-events: none; opacity: .35; background-image: linear-gradient(rgba(94,171,193,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(94,171,193,.06) 1px, transparent 1px); background-size: 36px 36px; }
+.jocky-shell .hud-panel, .jocky-shell .bg-cyber-dark, .jocky-shell .bg-cyber-surface { background: rgba(10,23,38,.94) !important; border-color: var(--line) !important; box-shadow: 0 8px 24px rgba(0,0,0,.22) !important; }
+.jocky-shell .bg-slate-950, .jocky-shell .bg-slate-900, .jocky-shell .bg-slate-800 { background: #101f31 !important; }
+.jocky-shell .text-white, .jocky-shell .text-slate-200, .jocky-shell .text-slate-300 { color: var(--ink) !important; }
+.jocky-shell .text-slate-400, .jocky-shell .text-slate-500, .jocky-shell .text-slate-600 { color: var(--muted) !important; }
+.jocky-shell .border-slate-800, .jocky-shell .border-slate-700, .jocky-shell .divide-slate-800 { border-color: var(--line) !important; }
+.jocky-shell .text-cyber-cyan { color: var(--cyan) !important; }
+.jocky-shell .text-cyber-green { color: var(--teal) !important; }
+.jocky-shell .text-cyber-red { color: #f27f90 !important; }
+.jocky-shell .font-hud { font-family: Inter, sans-serif !important; letter-spacing: .025em !important; }
+.jocky-shell .font-data { font-family: "JetBrains Mono", monospace !important; }
+.jocky-shell aside { background: rgba(7,17,29,.98) !important; }
+.jocky-shell main { background: transparent !important; }
+.jocky-shell .cyber-btn { background: #12263a !important; color: var(--ink) !important; border-color: var(--line) !important; box-shadow: none !important; }
+.jocky-shell .cyber-btn-cyan { background: #148ea4 !important; color: white !important; border-color: #148ea4 !important; }
+.jocky-shell input, .jocky-shell select, .jocky-shell textarea { background: #091725 !important; color: var(--ink) !important; border-color: var(--line) !important; }
+.jocky-shell .cyber-table th { background: #101f31 !important; color: var(--muted) !important; }
+.jocky-shell .cyber-table td { border-color: var(--line) !important; }
+.jocky-flow { display:flex; align-items:center; gap:.65rem; flex-wrap:wrap; font:600 10px/1.35 "JetBrains Mono", monospace; color:var(--ink); }
+.jocky-flow span { border:1px solid var(--line); background:#0d1d2d; padding:.7rem .8rem; border-radius:.5rem; min-width:94px; text-align:center; }
+.jocky-flow i { color:var(--cyan); font-style:normal; font-size:1.1rem; }
+.jocky-pipeline span { padding:.35rem .55rem; border:1px solid var(--line); border-radius:.35rem; background:#0d1d2d; color:var(--ink); }
+.jocky-pipeline i { color:var(--cyan); font-style:normal; }.jocky-pipeline em { margin-left:auto; color:var(--muted); font-style:normal; }
+::-webkit-scrollbar-track { background: #07111d; } ::-webkit-scrollbar-thumb { background: #314b61; }
