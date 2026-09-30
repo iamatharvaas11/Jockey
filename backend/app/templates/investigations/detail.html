@@ -8,12 +8,12 @@
         <i class="fa-solid fa-arrow-left"></i>
     </a>
     <span class="text-slate-500 font-data">DOSSIER //</span>
-    <span class="text-cyber-cyan font-mono font-bold text-sm tracking-wider" x-text="data.case_number || 'CAS-ACTIVE'"></span>
+    <span class="text-cyber-cyan font-mono font-bold text-sm tracking-wider">CAS-{{ id }}</span>
 </div>
 {% endblock %}
 
 {% block content %}
-<div x-data="investigationDetail()" x-init="initData()" class="flex flex-col h-full gap-5">
+<div x-data="investigationDetail()" x-init="initData()" class="flex flex-col min-h-full gap-5">
     
     <!-- Top Classified Header Banner -->
     <div class="hud-panel hud-corner-brackets rounded p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-cyber-dark/80">
@@ -57,7 +57,7 @@
     </div>
 
     <!-- Main Tabbed Investigation Workspace -->
-    <div class="hud-panel hud-corner-brackets rounded flex flex-col flex-1 overflow-hidden">
+    <div class="hud-panel hud-corner-brackets rounded flex flex-col flex-1 min-h-[600px] overflow-hidden">
         
         <!-- Tab Navigation Bar -->
         <div class="flex border-b border-slate-800 bg-cyber-dark/60 overflow-x-auto font-hud text-xs font-bold uppercase tracking-wider">
@@ -330,58 +330,541 @@
             </div>
 
             <!-- 6. CORRELATIONS & PROCESS GRAPH TAB -->
-            <div x-show="activeTab === 'correlations'" class="space-y-4">
-                <div class="hud-panel p-6 rounded">
-                    <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
-                        <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-diagram-project text-cyber-green text-sm"></i>
-                            <h4 class="font-hud font-bold text-xs uppercase tracking-wider text-white">RECONSTRUCTED PROCESS EXECUTION GRAPH</h4>
+            <div x-show="activeTab === 'correlations'" class="space-y-5 select-text">
+                
+                <!-- Tactical Header & Statistics HUD -->
+                <div class="hud-panel p-5 rounded border border-cyber-border/80 bg-cyber-dark/80">
+                    <div class="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 border-b border-cyber-border/40 pb-4">
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2.5">
+                                <div class="w-7 h-7 rounded bg-emerald-950/60 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                                    <i class="fa-solid fa-diagram-project text-xs"></i>
+                                </div>
+                                <h3 class="font-hud font-bold text-sm sm:text-base text-white tracking-wider uppercase">
+                                    RECONSTRUCTED PROCESS EXECUTION GRAPH & CORRELATIONS
+                                </h3>
+                                <template x-if="processGraph.suspicious_count > 0">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-hud font-bold uppercase tracking-wider bg-red-950/80 text-red-300 border border-red-500/40 shadow-[0_0_10px_rgba(239,68,68,0.3)]">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping"></span>
+                                        <span x-text="processGraph.suspicious_count + ' THREAT CHAINS FLAGGED'"></span>
+                                    </span>
+                                </template>
+                            </div>
+                            <p class="text-xs font-data text-slate-400 mt-1">
+                                Hierarchical execution lineage, parent-child process attribution, socket bindings, and cross-system correlation linkages.
+                            </p>
                         </div>
-                        <span class="hud-telemetry-tag text-[9px] text-cyber-red border-cyber-red/30 bg-red-950/20">
-                            [!] SUSPICIOUS PARENT-CHILD CHAIN FLAGGED
-                        </span>
+
+                        <!-- Global Actions -->
+                        <div class="flex flex-wrap items-center gap-2 font-hud">
+                            <!-- Live Telemetry Snapshot -->
+                            <button @click="acquireLiveTelemetry()" :disabled="acquiringLive"
+                                    class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded border border-cyan-400/50 flex items-center gap-1.5 transition active:scale-95 disabled:opacity-50">
+                                <i class="fa-solid" :class="acquiringLive ? 'fa-circle-notch fa-spin' : 'fa-radar'"></i>
+                                <span x-text="acquiringLive ? 'CAPTURING...' : 'SNAPSHOT LIVE TELEMETRY'"></span>
+                            </button>
+
+                            <!-- Refresh Graph -->
+                            <button @click="fetchProcessGraph()" :disabled="graphLoading"
+                                    class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded border border-slate-700 flex items-center gap-1.5 transition">
+                                <i class="fa-solid fa-arrows-rotate text-cyber-cyan" :class="{'fa-spin': graphLoading}"></i>
+                                <span>REFRESH</span>
+                            </button>
+
+                            <!-- Export JSON -->
+                            <button @click="exportGraphJson()"
+                                    class="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-bold rounded border border-slate-700 flex items-center gap-1.5 transition">
+                                <i class="fa-solid fa-download text-purple-400"></i>
+                                <span>JSON</span>
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Tactical Process Tree Graph -->
-                    <div class="process-tree max-w-2xl bg-slate-950 p-5 rounded border border-cyber-border/70 font-data text-xs">
-                        <ul class="text-slate-300 space-y-1">
-                            <li>
-                                <i class="fa-solid fa-microchip text-slate-500 mr-2"></i> 
-                                <span class="font-bold text-white">wininit.exe</span> <span class="text-slate-500 font-mono">[PID: 580]</span>
-                                <ul>
-                                    <li>
-                                        <i class="fa-solid fa-gear text-slate-500 mr-2"></i> 
-                                        <span class="font-bold text-white">services.exe</span> <span class="text-slate-500 font-mono">[PID: 744]</span>
-                                        <ul>
-                                            <li>
-                                                <i class="fa-solid fa-gear text-slate-500 mr-2"></i> 
-                                                <span>svchost.exe</span> <span class="text-slate-500 font-mono">[PID: 1024 - DcomLaunch]</span>
-                                            </li>
-                                            <li>
-                                                <i class="fa-solid fa-triangle-exclamation text-cyber-red mr-2 animate-pulse"></i> 
-                                                <span class="text-cyber-red font-bold font-mono">svchost.exe</span> <span class="text-slate-400 font-mono">[PID: 4320]</span> 
-                                                <span class="badge-cyber badge-red text-[9px] ml-2">UNAUTHORIZED DIRECTORY // C:\Temp\svchost.exe</span>
-                                                <ul>
-                                                    <li>
-                                                        <i class="fa-solid fa-terminal text-cyber-cyan mr-2"></i> 
-                                                        <span class="text-white font-mono">cmd.exe</span> <span class="text-slate-400 font-mono">[PID: 4356]</span>
-                                                    </li>
-                                                    <li>
-                                                        <i class="fa-solid fa-terminal text-amber-400 mr-2"></i> 
-                                                        <span class="text-amber-300 font-mono font-bold">powershell.exe</span> <span class="text-slate-400 font-mono">[PID: 4892]</span>
-                                                        <span class="badge-cyber badge-yellow text-[9px] ml-2">-Enc JABzAD0ATgBlAH...</span>
-                                                    </li>
-                                                </ul>
-                                            </li>
-                                        </ul>
-                                    </li>
-                                </ul>
-                            </li>
-                        </ul>
+                    <!-- Telemetry KPI Summary Metrics -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+                        <div class="bg-cyber-surface/80 p-3 rounded border border-cyber-border/60">
+                            <span class="text-[10px] font-data text-slate-400 uppercase tracking-wider">Processes Monitored</span>
+                            <div class="text-xl font-hud font-bold text-white mt-0.5" x-text="processGraph.total_processes || 0"></div>
+                            <span class="text-[10px] font-data text-slate-500">Live & Historical</span>
+                        </div>
+                        <div class="bg-cyber-surface/80 p-3 rounded border border-cyber-border/60">
+                            <span class="text-[10px] font-data text-slate-400 uppercase tracking-wider">Threat Chains</span>
+                            <div class="text-xl font-hud font-bold mt-0.5" :class="processGraph.suspicious_count > 0 ? 'text-cyber-red' : 'text-emerald-400'" x-text="processGraph.suspicious_count || 0"></div>
+                            <span class="text-[10px] font-data" :class="processGraph.suspicious_count > 0 ? 'text-red-400' : 'text-emerald-400'" x-text="processGraph.suspicious_count > 0 ? 'Action Required' : 'Clean Trace'"></span>
+                        </div>
+                        <div class="bg-cyber-surface/80 p-3 rounded border border-cyber-border/60">
+                            <span class="text-[10px] font-data text-slate-400 uppercase tracking-wider">Bound Sockets</span>
+                            <div class="text-xl font-hud font-bold text-cyber-cyan mt-0.5" x-text="processGraph.total_sockets || 0"></div>
+                            <span class="text-[10px] font-data text-slate-500">TCP / UDP Bindings</span>
+                        </div>
+                        <div class="bg-cyber-surface/80 p-3 rounded border border-cyber-border/60">
+                            <span class="text-[10px] font-data text-slate-400 uppercase tracking-wider">Correlation Edges</span>
+                            <div class="text-xl font-hud font-bold text-purple-300 mt-0.5" x-text="processGraph.relationships_count || 0"></div>
+                            <span class="text-[10px] font-data text-slate-500">Cross-Artifact Links</span>
+                        </div>
+                    </div>
+
+                    <!-- Filter & View Mode Switcher -->
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-4 pt-3 border-t border-slate-800/80">
+                        <!-- View Modes Tabs -->
+                        <div class="flex items-center gap-1.5 bg-slate-950 p-1 rounded border border-slate-800 font-hud text-xs">
+                            <button @click="graphViewMode = 'tree'" 
+                                    :class="graphViewMode === 'tree' ? 'bg-cyan-950/80 text-cyber-cyan border border-cyber-cyan/50 shadow-[0_0_8px_rgba(0,240,255,0.2)]' : 'text-slate-400 hover:text-white'"
+                                    class="px-3 py-1 rounded transition flex items-center gap-1.5 font-bold">
+                                <i class="fa-solid fa-network-wired text-xs"></i>
+                                <span>PROCESS TREE</span>
+                            </button>
+                            <button @click="graphViewMode = 'graph'" 
+                                    :class="graphViewMode === 'graph' ? 'bg-cyan-950/80 text-cyber-cyan border border-cyber-cyan/50 shadow-[0_0_8px_rgba(0,240,255,0.2)]' : 'text-slate-400 hover:text-white'"
+                                    class="px-3 py-1 rounded transition flex items-center gap-1.5 font-bold">
+                                <i class="fa-solid fa-circle-nodes text-xs"></i>
+                                <span>VISUAL GRAPH</span>
+                            </button>
+                            <button @click="graphViewMode = 'matrix'" 
+                                    :class="graphViewMode === 'matrix' ? 'bg-cyan-950/80 text-cyber-cyan border border-cyber-cyan/50 shadow-[0_0_8px_rgba(0,240,255,0.2)]' : 'text-slate-400 hover:text-white'"
+                                    class="px-3 py-1 rounded transition flex items-center gap-1.5 font-bold">
+                                <i class="fa-solid fa-table-cells text-xs"></i>
+                                <span>CORRELATION MATRIX</span>
+                            </button>
+                        </div>
+
+                        <!-- Search & Suspicious Filter -->
+                        <div class="flex items-center gap-2.5 flex-1 max-w-md">
+                            <div class="relative flex-1">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
+                                <input type="text" x-model="processSearch" placeholder="Search by name, PID, path, or arguments..."
+                                       class="w-full bg-slate-900 border border-slate-700 rounded pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyber-cyan font-mono">
+                            </div>
+                            <label class="flex items-center gap-1.5 text-xs font-data text-slate-300 cursor-pointer select-none whitespace-nowrap">
+                                <input type="checkbox" x-model="suspiciousOnly" class="rounded bg-slate-900 border-slate-700 text-cyber-red focus:ring-0">
+                                <span :class="suspiciousOnly ? 'text-cyber-red font-bold' : 'text-slate-400'">Threats Only</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
-            </div>
 
+                <!-- =================================================================== -->
+                <!-- FLAGGED SUSPICIOUS PROCESS CHAINS BANNER (IF DETECTED)              -->
+                <!-- =================================================================== -->
+                <template x-if="processGraph.suspicious_chains && processGraph.suspicious_chains.length > 0">
+                    <div class="hud-panel p-4 rounded border border-cyber-red/50 bg-red-950/20">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-2 text-xs font-hud font-bold text-cyber-red uppercase">
+                                <i class="fa-solid fa-triangle-exclamation animate-pulse"></i>
+                                <span>ANOMALOUS ATTACK CHAIN DETECTED (<span x-text="processGraph.suspicious_chains.length"></span> FLAGGED)</span>
+                            </div>
+                            <span class="text-[10px] font-data text-slate-400">NIST SP 800-86 Heuristic Violation</span>
+                        </div>
+                        <div class="space-y-2">
+                            <template x-for="(ch, idx) in processGraph.suspicious_chains" :key="idx">
+                                <div class="bg-black/60 p-3 rounded border border-red-900/60 font-data text-xs flex flex-col md:flex-row md:items-center justify-between gap-2">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <template x-for="(step, sIdx) in ch.chain" :key="sIdx">
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="px-2 py-0.5 rounded font-mono text-[11px]"
+                                                      :class="step.is_suspicious ? 'bg-red-950 text-red-300 border border-red-500/60 font-bold' : 'bg-slate-900 text-slate-300 border border-slate-800'">
+                                                    <span x-text="step.name"></span>
+                                                    <span class="text-[10px] opacity-75 font-normal" x-text="'[' + step.pid + ']'"></span>
+                                                </span>
+                                                <template x-if="sIdx < ch.chain.length - 1">
+                                                    <i class="fa-solid fa-arrow-right text-slate-600 text-[10px]"></i>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[11px] text-amber-300 font-mono" x-text="ch.reasons[0]"></span>
+                                        <button @click="inspectProcess(findProcessByPid(ch.target_pid))"
+                                                class="px-2 py-1 bg-red-900/40 hover:bg-red-800/60 text-red-200 text-[10px] font-hud font-bold rounded border border-red-700/50 whitespace-nowrap transition">
+                                            INSPECT TARGET
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- =================================================================== -->
+                <!-- VIEW 1: INTERACTIVE RECONSTRUCTED PROCESS TREE                       -->
+                <!-- =================================================================== -->
+                <div x-show="graphViewMode === 'tree'" class="hud-panel p-5 rounded border border-cyber-border bg-cyber-dark/90">
+                    <div class="flex items-center justify-between mb-4 border-b border-cyber-border/40 pb-2.5">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-sitemap text-cyber-cyan text-sm"></i>
+                            <h4 class="font-hud font-bold text-xs uppercase tracking-wider text-white">RECONSTRUCTED HIERARCHICAL PROCESS EXECUTION TREE</h4>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs font-data text-slate-400">
+                            <span>Showing Root Trees: <strong class="text-white" x-text="filteredTrees().length"></strong></span>
+                            <button @click="expandAllTrees = !expandAllTrees" class="text-cyber-cyan hover:underline text-[11px] ml-2 font-hud">
+                                <span x-text="expandAllTrees ? 'COLLAPSE ALL' : 'EXPAND ALL'"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tree Container -->
+                    <div class="space-y-3 font-data text-xs">
+                        <template x-for="root in filteredTrees()" :key="root.pid">
+                            <div class="bg-black/50 p-3.5 rounded border transition-colors"
+                                 :class="root.is_suspicious ? 'border-red-500/50 bg-red-950/10' : 'border-slate-800 hover:border-slate-700'">
+                                
+                                <!-- Level 0: Root Process Node -->
+                                <div class="flex items-center justify-between gap-3 group">
+                                    <div class="flex items-center gap-2.5">
+                                        <i class="fa-solid text-sm" 
+                                           :class="getProcessIcon(root)"></i>
+                                        <span class="font-bold text-white text-sm" x-text="root.name"></span>
+                                        <span class="font-mono text-cyber-cyan text-xs" x-text="'[PID: ' + root.pid + ']'"></span>
+                                        <span class="text-slate-500 text-[11px]" x-text="'User: ' + root.username"></span>
+                                        
+                                        <!-- Suspicious badge -->
+                                        <template x-if="root.is_suspicious">
+                                            <span class="badge-cyber badge-red text-[10px] ml-2 animate-pulse" x-text="root.suspicious_reasons[0]"></span>
+                                        </template>
+
+                                        <!-- Network Socket badge -->
+                                        <template x-if="root.sockets && root.sockets.length > 0">
+                                            <span class="badge-cyber badge-blue text-[10px] flex items-center gap-1">
+                                                <i class="fa-solid fa-network-wired text-[9px]"></i>
+                                                <span x-text="root.sockets[0].protocol + ' :' + root.sockets[0].local_port"></span>
+                                            </span>
+                                        </template>
+                                    </div>
+
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-slate-500 text-[11px]" x-text="formatMb(root.memory_bytes)"></span>
+                                        <button @click="inspectProcess(root)" 
+                                                class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-cyber-cyan text-[11px] font-hud rounded border border-cyber-cyan/30 transition opacity-80 group-hover:opacity-100">
+                                            INSPECT
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Level 1 Children -->
+                                <template x-if="root.children && root.children.length > 0 && (expandAllTrees || true)">
+                                    <div class="mt-2.5 ml-5 pl-4 border-l-2 border-slate-800 space-y-2.5">
+                                        <template x-for="c1 in root.children" :key="c1.pid">
+                                            <div class="p-2 rounded transition" :class="c1.is_suspicious ? 'bg-red-950/20 border border-red-500/40' : 'bg-slate-900/40 border border-slate-800/60'">
+                                                
+                                                <div class="flex items-center justify-between gap-2 group">
+                                                    <div class="flex items-center gap-2">
+                                                        <i class="fa-solid text-xs" :class="getProcessIcon(c1)"></i>
+                                                        <span class="font-bold text-white" x-text="c1.name"></span>
+                                                        <span class="font-mono text-cyber-cyan text-xs" x-text="'[PID: ' + c1.pid + ']'"></span>
+                                                        
+                                                        <template x-if="c1.is_suspicious">
+                                                            <span class="badge-cyber badge-red text-[9px] animate-pulse" x-text="c1.suspicious_reasons[0]"></span>
+                                                        </template>
+                                                        <template x-if="c1.sockets && c1.sockets.length > 0">
+                                                            <span class="badge-cyber badge-blue text-[9px] flex items-center gap-1">
+                                                                <i class="fa-solid fa-network-wired text-[8px]"></i>
+                                                                <span x-text="c1.sockets[0].protocol + ' :' + c1.sockets[0].local_port"></span>
+                                                            </span>
+                                                        </template>
+                                                    </div>
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="text-slate-500 text-[10px]" x-text="formatMb(c1.memory_bytes)"></span>
+                                                        <button @click="inspectProcess(c1)" 
+                                                                class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-cyber-cyan text-[10px] font-hud rounded border border-cyber-cyan/30 transition">
+                                                            INSPECT
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Level 2 Children -->
+                                                <template x-if="c1.children && c1.children.length > 0">
+                                                    <div class="mt-2 ml-4 pl-3 border-l-2 border-slate-700/60 space-y-2">
+                                                        <template x-for="c2 in c1.children" :key="c2.pid">
+                                                            <div class="p-2 rounded" :class="c2.is_suspicious ? 'bg-red-950/30 border border-red-500/50' : 'bg-slate-900/60 border border-slate-800/80'">
+                                                                <div class="flex items-center justify-between gap-2 group">
+                                                                    <div class="flex items-center gap-2">
+                                                                        <i class="fa-solid text-xs" :class="getProcessIcon(c2)"></i>
+                                                                        <span class="font-bold text-white" x-text="c2.name"></span>
+                                                                        <span class="font-mono text-cyber-cyan text-xs" x-text="'[PID: ' + c2.pid + ']'"></span>
+                                                                        <template x-if="c2.is_suspicious">
+                                                                            <span class="badge-cyber badge-red text-[9px] animate-pulse" x-text="c2.suspicious_reasons[0]"></span>
+                                                                        </template>
+                                                                        <template x-if="c2.sockets && c2.sockets.length > 0">
+                                                                            <span class="badge-cyber badge-yellow text-[9px]">
+                                                                                <span x-text="c2.sockets[0].protocol + ' ' + (c2.sockets[0].remote_ip ? '-> ' + c2.sockets[0].remote_ip + ':' + c2.sockets[0].remote_port : ':' + c2.sockets[0].local_port)"></span>
+                                                                            </span>
+                                                                        </template>
+                                                                    </div>
+                                                                    <button @click="inspectProcess(c2)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-cyber-cyan text-[10px] font-hud rounded border border-cyber-cyan/30">INSPECT</button>
+                                                                </div>
+
+                                                                <!-- Level 3 Children -->
+                                                                <template x-if="c2.children && c2.children.length > 0">
+                                                                    <div class="mt-2 ml-4 pl-3 border-l-2 border-slate-700/40 space-y-1.5">
+                                                                        <template x-for="c3 in c2.children" :key="c3.pid">
+                                                                            <div class="p-1.5 rounded flex items-center justify-between" :class="c3.is_suspicious ? 'bg-red-950/40 border border-red-500/60' : 'bg-slate-950'">
+                                                                                <div class="flex items-center gap-2">
+                                                                                    <i class="fa-solid text-xs" :class="getProcessIcon(c3)"></i>
+                                                                                    <span class="font-bold" :class="c3.is_suspicious ? 'text-cyber-red' : 'text-white'" x-text="c3.name"></span>
+                                                                                    <span class="font-mono text-cyber-cyan text-xs" x-text="'[PID: ' + c3.pid + ']'"></span>
+                                                                                    <template x-if="c3.is_suspicious">
+                                                                                        <span class="badge-cyber badge-red text-[8px]" x-text="c3.suspicious_reasons[0]"></span>
+                                                                                    </template>
+                                                                                </div>
+                                                                                <button @click="inspectProcess(c3)" class="px-1.5 py-0.5 bg-slate-800 text-cyber-cyan text-[9px] font-hud rounded border border-cyber-cyan/30">INSPECT</button>
+                                                                            </div>
+                                                                        </template>
+                                                                    </div>
+                                                                </template>
+                                                            </div>
+                                                        </template>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- =================================================================== -->
+                <!-- VIEW 2: INTERACTIVE SVG VISUAL PROCESS & NETWORK GRAPH              -->
+                <!-- =================================================================== -->
+                <div x-show="graphViewMode === 'graph'" class="hud-panel p-5 rounded border border-cyber-border bg-cyber-dark/95">
+                    <div class="flex items-center justify-between mb-3 border-b border-cyber-border/40 pb-2">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-circle-nodes text-purple-400 text-sm"></i>
+                            <h4 class="font-hud font-bold text-xs uppercase tracking-wider text-white">INTERACTIVE NODE-LINK PROCESS & SOCKET GRAPH</h4>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs font-hud">
+                            <button @click="graphZoom = Math.min(graphZoom + 0.15, 2.0)" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded border border-slate-700">+</button>
+                            <span class="font-mono text-slate-400 text-[11px]" x-text="Math.round(graphZoom * 100) + '%'"></span>
+                            <button @click="graphZoom = Math.max(graphZoom - 0.15, 0.5)" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded border border-slate-700">-</button>
+                            <button @click="graphZoom = 1.0" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-cyber-cyan rounded border border-slate-700 text-[10px]">RESET</button>
+                        </div>
+                    </div>
+
+                    <!-- SVG Canvas Container -->
+                    <div class="w-full h-[520px] bg-black/90 rounded border border-slate-800 overflow-hidden relative flex items-center justify-center">
+                        <!-- Loading State Overlay -->
+                        <div x-show="graphLoading" class="absolute inset-0 bg-cyber-dark/85 backdrop-blur-sm z-20 flex flex-col items-center justify-center gap-3">
+                            <i class="fa-solid fa-circle-notch fa-spin text-3xl text-cyber-cyan"></i>
+                            <span class="font-hud text-xs text-cyber-cyan tracking-widest uppercase">CORRELATING PROCESS & SOCKET TOPOLOGY...</span>
+                        </div>
+
+                        <!-- Empty State Overlay (if 0 nodes) -->
+                        <div x-show="!graphLoading && (!processGraph.graph_nodes || processGraph.graph_nodes.length === 0)" 
+                             class="absolute inset-0 z-10 flex flex-col items-center justify-center text-center p-6 bg-cyber-dark/90">
+                            <i class="fa-solid fa-diagram-project text-4xl text-slate-600 mb-3"></i>
+                            <h4 class="font-hud text-sm font-bold text-white uppercase tracking-wider mb-1">NO GRAPH TELEMETRY CORRELATED</h4>
+                            <p class="font-mono text-xs text-slate-400 max-w-md mb-4">No process or socket relationships have been linked to this case yet. Click below to capture live host forensic telemetry or run a scan playbook.</p>
+                            <button @click="acquireLiveTelemetry()" :disabled="acquiringLive"
+                                    class="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-hud font-bold text-xs rounded transition flex items-center gap-2 shadow-[0_0_15px_rgba(0,240,255,0.3)]">
+                                <i class="fa-solid fa-satellite-dish" :class="{'fa-spin': acquiringLive}"></i>
+                                <span x-text="acquiringLive ? 'INGESTING TELEMETRY...' : 'CAPTURE LIVE HOST TELEMETRY'"></span>
+                            </button>
+                        </div>
+
+                        <!-- Dynamic SVG Visual Graph -->
+                        <svg class="w-full h-full cursor-grab active:cursor-grabbing transition-transform duration-200 select-none"
+                             :style="'transform: scale(' + graphZoom + '); transform-origin: center center;'"
+                             viewBox="0 0 1100 520"
+                             @click="handleSvgClick($event)"
+                             x-html="renderSvgGraph()">
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- =================================================================== -->
+                <!-- VIEW 3: CROSS-ARTIFACT CORRELATION MATRIX                           -->
+                <!-- =================================================================== -->
+                <div x-show="graphViewMode === 'matrix'" class="hud-panel p-5 rounded border border-cyber-border bg-cyber-dark/95">
+                    <div class="flex items-center justify-between mb-3 border-b border-cyber-border/40 pb-2">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-table-cells text-cyber-cyan text-sm"></i>
+                            <h4 class="font-hud font-bold text-xs uppercase tracking-wider text-white">CROSS-ARTIFACT RELATIONSHIP GRAPH EDGES</h4>
+                        </div>
+                        <div class="text-xs font-data text-slate-400">
+                            Total Relationships: <strong class="text-white" x-text="processGraph.relationships ? processGraph.relationships.length : 0"></strong>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto border border-cyber-border/60 rounded">
+                        <table class="w-full text-left text-xs font-data">
+                            <thead class="bg-slate-900 text-slate-400 uppercase text-[10px] border-b border-cyber-border">
+                                <tr>
+                                    <th class="p-2.5">Type</th>
+                                    <th class="p-2.5">Source Node</th>
+                                    <th class="p-2.5">Target Node</th>
+                                    <th class="p-2.5">Confidence</th>
+                                    <th class="p-2.5">Correlation Reasoning</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-cyber-border/30 text-slate-300">
+                                <template x-for="r in processGraph.relationships" :key="r.id">
+                                    <tr class="hover:bg-slate-800/40 transition-colors">
+                                        <td class="p-2.5">
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase"
+                                                  :class="{
+                                                      'bg-cyan-950 text-cyan-400 border border-cyan-500/30': r.relationship_type === 'PARENT_OF' || r.relationship_type === 'SPAWNED_CHILD',
+                                                      'bg-purple-950 text-purple-400 border border-purple-500/30': r.relationship_type === 'OPENED_SOCKET',
+                                                      'bg-emerald-950 text-emerald-400 border border-emerald-500/30': r.relationship_type === 'EXECUTED_FROM_FILE',
+                                                      'bg-slate-800 text-slate-300': r.relationship_type !== 'PARENT_OF' && r.relationship_type !== 'SPAWNED_CHILD' && r.relationship_type !== 'OPENED_SOCKET' && r.relationship_type !== 'EXECUTED_FROM_FILE'
+                                                  }"
+                                                  x-text="r.relationship_type">
+                                            </span>
+                                        </td>
+                                        <td class="p-2.5 font-mono text-white" x-text="r.source_evidence_id"></td>
+                                        <td class="p-2.5 font-mono text-cyber-cyan" x-text="r.target_evidence_id"></td>
+                                        <td class="p-2.5 font-mono font-bold"
+                                            :class="r.confidence >= 0.8 ? 'text-cyber-green' : 'text-amber-400'"
+                                            x-text="Math.round(r.confidence * 100) + '%'">
+                                        </td>
+                                        <td class="p-2.5 text-slate-300 font-data max-w-md truncate" :title="r.reason" x-text="r.reason"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- =================================================================== -->
+                <!-- PROCESS FORENSIC DEEP-DIVE INSPECTOR MODAL                          -->
+                <!-- =================================================================== -->
+                <div x-show="showProcessModal && selectedProcess" 
+                     class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                     style="display: none;"
+                     @keydown.escape.window="showProcessModal = false">
+                    
+                    <div class="hud-panel w-full max-w-3xl rounded border border-cyber-border/90 bg-cyber-dark/95 shadow-2xl p-6 font-data text-xs overflow-hidden max-h-[90vh] flex flex-col"
+                         @click.away="showProcessModal = false">
+                        
+                        <!-- Modal Header -->
+                        <div class="flex items-center justify-between border-b border-cyber-border/60 pb-3 mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded flex items-center justify-center text-base"
+                                     :class="selectedProcess?.is_suspicious ? 'bg-red-950/80 border border-red-500/60 text-cyber-red' : 'bg-cyan-950/80 border border-cyan-500/60 text-cyber-cyan'">
+                                    <i class="fa-solid" :class="selectedProcess?.is_suspicious ? 'fa-triangle-exclamation' : 'fa-microchip'"></i>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h3 class="font-hud font-bold text-base text-white uppercase tracking-wider" x-text="selectedProcess?.name"></h3>
+                                        <span class="font-mono text-cyber-cyan text-xs" x-text="'PID: ' + selectedProcess?.pid"></span>
+                                        <span class="font-mono text-slate-400 text-xs" x-text="'PPID: ' + selectedProcess?.ppid"></span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-400 mt-0.5" x-text="'Security Context: ' + selectedProcess?.username"></p>
+                                </div>
+                            </div>
+                            <button @click="showProcessModal = false" class="text-slate-400 hover:text-white text-lg">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+
+                        <!-- Modal Body (Scrollable) -->
+                        <div class="space-y-4 overflow-y-auto flex-1 pr-1">
+                            
+                            <!-- KPI Badges -->
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                                <div class="bg-black/60 p-2.5 rounded border border-slate-800">
+                                    <span class="text-[10px] text-slate-400 uppercase">Detection Verdict</span>
+                                    <div class="font-hud font-bold text-xs mt-0.5" 
+                                         :class="selectedProcess?.is_suspicious ? 'text-cyber-red' : 'text-emerald-400'"
+                                         x-text="selectedProcess?.is_suspicious ? 'FLAGGED THREAT' : 'BENIGN / NOMINAL'"></div>
+                                </div>
+                                <div class="bg-black/60 p-2.5 rounded border border-slate-800">
+                                    <span class="text-[10px] text-slate-400 uppercase">Memory Footprint</span>
+                                    <div class="font-mono font-bold text-white text-xs mt-0.5" x-text="formatMb(selectedProcess?.memory_bytes)"></div>
+                                </div>
+                                <div class="bg-black/60 p-2.5 rounded border border-slate-800">
+                                    <span class="text-[10px] text-slate-400 uppercase">Active Threads</span>
+                                    <div class="font-mono font-bold text-cyber-cyan text-xs mt-0.5" x-text="selectedProcess?.threads || 1"></div>
+                                </div>
+                                <div class="bg-black/60 p-2.5 rounded border border-slate-800">
+                                    <span class="text-[10px] text-slate-400 uppercase">Bound Sockets</span>
+                                    <div class="font-mono font-bold text-purple-300 text-xs mt-0.5" x-text="selectedProcess?.sockets ? selectedProcess.sockets.length : 0"></div>
+                                </div>
+                            </div>
+
+                            <!-- Executable Binary Path -->
+                            <div class="bg-black/60 p-3 rounded border border-slate-800">
+                                <div class="flex items-center justify-between text-slate-400 text-[11px] mb-1">
+                                    <span class="uppercase font-semibold">Executable Binary Path</span>
+                                    <button @click="copyText(selectedProcess?.exe_path)" class="text-cyber-cyan hover:underline text-[10px]">COPY</button>
+                                </div>
+                                <div class="font-mono text-xs text-white break-all" x-text="selectedProcess?.exe_path"></div>
+                            </div>
+
+                            <!-- Launch Command Line Arguments -->
+                            <div class="bg-black/60 p-3 rounded border border-slate-800">
+                                <div class="flex items-center justify-between text-slate-400 text-[11px] mb-1">
+                                    <span class="uppercase font-semibold">Execution Command Line Telemetry</span>
+                                    <button @click="copyText(selectedProcess?.cmdline)" class="text-cyber-cyan hover:underline text-[10px]">COPY</button>
+                                </div>
+                                <div class="font-mono text-xs text-amber-200 bg-slate-950 p-2 rounded border border-slate-900 break-all leading-relaxed" 
+                                     x-text="selectedProcess?.cmdline || '[No arguments / Kernel Thread]'"></div>
+                            </div>
+
+                            <!-- Cryptographic SHA-256 Digest -->
+                            <div class="bg-black/60 p-3 rounded border border-slate-800">
+                                <div class="flex items-center justify-between text-slate-400 text-[11px] mb-1">
+                                    <span class="uppercase font-semibold">Deterministic SHA-256 Digest</span>
+                                    <button @click="copyText(selectedProcess?.sha256)" class="text-cyber-cyan hover:underline text-[10px]">COPY</button>
+                                </div>
+                                <div class="font-mono text-[11px] text-emerald-300 select-all break-all" x-text="selectedProcess?.sha256"></div>
+                            </div>
+
+                            <!-- Triggered Suspicious Rules (If any) -->
+                            <template x-if="selectedProcess?.is_suspicious && selectedProcess?.suspicious_reasons">
+                                <div class="bg-red-950/30 p-3.5 rounded border border-red-500/50">
+                                    <span class="text-cyber-red font-hud font-bold text-xs uppercase flex items-center gap-1.5 mb-2">
+                                        <i class="fa-solid fa-triangle-exclamation"></i>
+                                        FORENSIC HEURISTIC VIOLATIONS
+                                    </span>
+                                    <ul class="space-y-1 text-xs text-red-200 font-data list-disc list-inside">
+                                        <template x-for="(r, idx) in selectedProcess.suspicious_reasons" :key="idx">
+                                            <li x-text="r"></li>
+                                        </template>
+                                    </ul>
+                                </div>
+                            </template>
+
+                            <!-- Open Sockets Table (If any) -->
+                            <template x-if="selectedProcess?.sockets && selectedProcess.sockets.length > 0">
+                                <div class="bg-black/60 p-3 rounded border border-slate-800">
+                                    <span class="text-slate-400 font-semibold text-[11px] uppercase block mb-2">Bound Network Sockets</span>
+                                    <table class="w-full text-left text-xs font-mono">
+                                        <thead class="text-slate-500 border-b border-slate-800 text-[10px]">
+                                            <tr>
+                                                <th class="pb-1">Proto</th>
+                                                <th class="pb-1">Local Address</th>
+                                                <th class="pb-1">Remote Address</th>
+                                                <th class="pb-1">State</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-800/60">
+                                            <template x-for="(s, idx) in selectedProcess.sockets" :key="idx">
+                                                <tr>
+                                                    <td class="py-1 text-cyber-cyan" x-text="s.protocol"></td>
+                                                    <td class="py-1 text-slate-300" x-text="s.local_ip + ':' + s.local_port"></td>
+                                                    <td class="py-1 text-amber-300" x-text="s.remote_ip ? s.remote_ip + ':' + s.remote_port : '0.0.0.0:*'"></td>
+                                                    <td class="py-1 text-emerald-400" x-text="s.status"></td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </template>
+
+                        </div>
+
+                        <!-- Modal Footer -->
+                        <div class="mt-4 pt-3 border-t border-slate-800 flex justify-end">
+                            <button @click="showProcessModal = false" 
+                                    class="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-hud font-bold rounded border border-slate-700 transition">
+                                CLOSE INSPECTOR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
         </div>
     </div>
 </div>
@@ -392,9 +875,21 @@
 <script>
 function investigationDetail() {
     return {
-        data: {},
+        data: {
+            id: '{{ id }}',
+            case_number: 'CAS-{{ id }}',
+            title: 'Incident Investigation #{{ id }}',
+            status: 'ACTIVE',
+            severity: 'HIGH',
+            created_at: new Date().toISOString(),
+            lead_investigator: 'DFIR Specialist [Lead]',
+            description: 'Digital forensics investigation dossier covering volatile host processes, open network sockets, timeline events, and correlated threat heuristics.',
+            artifacts: [],
+            iocs: [],
+            timeline: []
+        },
         activeTab: 'overview',
-        editorCode: window.editorApp.code,
+        editorCode: (typeof window !== 'undefined' && window.editorApp && window.editorApp.code) ? window.editorApp.code : '',
         tabs: [
             { id: 'overview', label: 'Overview Briefing', icon: 'fa-solid fa-shield-halved' },
             { id: 'editor', label: 'JOCKY DSL Studio', icon: 'fa-solid fa-code' },
@@ -404,10 +899,35 @@ function investigationDetail() {
             { id: 'correlations', label: 'Process Graph & Correlations', icon: 'fa-solid fa-diagram-project' }
         ],
         
+        // Process Graph & Correlation State
+        processGraph: {
+            total_processes: 0,
+            total_sockets: 0,
+            suspicious_count: 0,
+            relationships_count: 0,
+            trees: [],
+            suspicious_chains: [],
+            relationships: [],
+            flat_processes: [],
+            graph_nodes: [],
+            graph_edges: []
+        },
+        graphLoading: false,
+        graphViewMode: 'tree', // 'tree' | 'graph' | 'matrix'
+        processSearch: '',
+        suspiciousOnly: false,
+        selectedProcess: null,
+        showProcessModal: false,
+        acquiringLive: false,
+        expandAllTrees: true,
+        graphZoom: 1.0,
+
         async initData() {
-            window.editorApp.investigationId = '{{ id }}';
+            if (typeof window !== 'undefined' && window.editorApp) {
+                window.editorApp.investigationId = '{{ id }}';
+            }
             
-            // Attempt to load from real backend API
+            // Load case detail & artifacts
             try {
                 const token = localStorage.getItem('jocky_token');
                 const headers = { 'Content-Type': 'application/json' };
@@ -415,10 +935,11 @@ function investigationDetail() {
 
                 const res = await fetch(`/api/v1/investigations/{{ id }}`, { headers });
                 if (res.ok) {
-                    this.data = await res.json();
+                    const fetched = await res.json();
+                    this.data = { ...this.data, ...fetched };
                 }
 
-                // Load associated evidence, iocs, and timeline
+                // Load associated evidence, iocs, timeline, and process graph
                 const [evRes, iocRes, tlRes] = await Promise.all([
                     fetch(`/api/v1/evidence?investigation_id={{ id }}`, { headers }),
                     fetch(`/api/v1/iocs?investigation_id={{ id }}`, { headers }),
@@ -427,9 +948,255 @@ function investigationDetail() {
                 if (evRes.ok) this.data.artifacts = await evRes.json();
                 if (iocRes.ok) this.data.iocs = await iocRes.json();
                 if (tlRes.ok) this.data.timeline = await tlRes.json();
+                
+                await this.fetchProcessGraph();
             } catch (err) {
                 console.warn("Could not load full investigation detail:", err);
             }
+        },
+
+        async fetchProcessGraph() {
+            this.graphLoading = true;
+            try {
+                const token = localStorage.getItem('jocky_token');
+                const headers = { 'Content-Type': 'application/json' };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                const res = await fetch(`/api/v1/investigations/{{ id }}`, { headers });
+                const graphRes = await fetch(`/api/v1/investigations/{{ id }}/process-graph`, { headers });
+                if (graphRes.ok) {
+                    this.processGraph = await graphRes.json();
+                }
+            } catch (e) {
+                console.warn('Could not load process graph:', e);
+            } finally {
+                this.graphLoading = false;
+            }
+        },
+
+        async acquireLiveTelemetry() {
+            this.acquiringLive = true;
+            window.dispatchEvent(new CustomEvent('toast', {
+                detail: { message: 'Capturing live host process & socket telemetry...', type: 'info' }
+            }));
+            try {
+                const token = localStorage.getItem('jocky_token');
+                const headers = { 'Content-Type': 'application/json' };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                const res = await fetch(`/api/v1/investigations/{{ id }}/correlate-live`, {
+                    method: 'POST',
+                    headers
+                });
+                if (res.ok) {
+                    this.processGraph = await res.json();
+                    window.dispatchEvent(new CustomEvent('toast', {
+                        detail: { message: `Live telemetry captured! Correlated ${this.processGraph.total_processes} processes and ${this.processGraph.relationships_count} relationships.`, type: 'success' }
+                    }));
+                } else {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+            } catch (err) {
+                window.dispatchEvent(new CustomEvent('toast', {
+                    detail: { message: `Telemetry acquisition failed: ${err.message}`, type: 'error' }
+                }));
+            } finally {
+                this.acquiringLive = false;
+            }
+        },
+
+        filteredTrees() {
+            if (!this.processGraph || !this.processGraph.trees) return [];
+            let list = this.processGraph.trees;
+            
+            if (this.suspiciousOnly) {
+                list = list.filter(node => this.hasSuspiciousDescendant(node));
+            }
+
+            if (this.processSearch.trim()) {
+                const q = this.processSearch.toLowerCase().trim();
+                list = list.filter(node => this.searchInNode(node, q));
+            }
+
+            return list;
+        },
+
+        hasSuspiciousDescendant(node) {
+            if (node.is_suspicious) return true;
+            if (node.children && node.children.length > 0) {
+                return node.children.some(c => this.hasSuspiciousDescendant(c));
+            }
+            return false;
+        },
+
+        searchInNode(node, query) {
+            if ((node.name && node.name.toLowerCase().includes(query)) ||
+                String(node.pid).includes(query) ||
+                (node.exe_path && node.exe_path.toLowerCase().includes(query)) ||
+                (node.cmdline && String(node.cmdline).toLowerCase().includes(query))) {
+                return true;
+            }
+            if (node.children && node.children.length > 0) {
+                return node.children.some(c => this.searchInNode(c, query));
+            }
+            return false;
+        },
+
+        findProcessByPid(pid) {
+            if (!this.processGraph.flat_processes) return null;
+            return this.processGraph.flat_processes.find(p => p.pid === pid);
+        },
+
+        inspectProcess(proc) {
+            if (!proc) return;
+            this.selectedProcess = proc;
+            this.showProcessModal = true;
+        },
+
+        getProcessIcon(proc) {
+            if (proc.is_suspicious) return 'fa-triangle-exclamation text-cyber-red animate-pulse';
+            const n = (proc.name || '').toLowerCase();
+            if (n.includes('cmd') || n.includes('powershell') || n.includes('pwsh') || n.includes('bash')) {
+                return 'fa-terminal text-amber-400';
+            }
+            if (n.includes('service') || n.includes('svchost') || n.includes('taskhost')) {
+                return 'fa-gears text-purple-400';
+            }
+            return 'fa-microchip text-slate-400';
+        },
+
+        formatMb(bytes) {
+            if (!bytes) return '1.2 MB';
+            const mb = (bytes / (1024 * 1024)).toFixed(1);
+            return mb + ' MB';
+        },
+
+        copyText(text) {
+            if (!text) return;
+            navigator.clipboard.writeText(String(text)).then(() => {
+                window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Copied to clipboard', type: 'info' } }));
+            });
+        },
+
+        exportGraphJson() {
+            const blob = new Blob([JSON.stringify(this.processGraph, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `jocky_case_{{ id }}_process_graph.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Exported Process Graph JSON', type: 'success' } }));
+        },
+
+        renderSvgGraph() {
+            if (!this.processGraph || !this.processGraph.graph_nodes || this.processGraph.graph_nodes.length === 0) {
+                return `
+                    <text x="550" y="240" text-anchor="middle" fill="#64748b" font-family="'Orbitron', sans-serif" font-size="13" font-weight="bold">
+                        NO GRAPH TELEMETRY DETECTED
+                    </text>
+                    <text x="550" y="270" text-anchor="middle" fill="#475569" font-family="monospace" font-size="11">
+                        Run a playbook or click "Capture Live Host Telemetry"
+                    </text>
+                `;
+            }
+
+            const nodes = this.processGraph.graph_nodes;
+            const edges = this.processGraph.graph_edges || [];
+            const query = (this.processSearch || '').toLowerCase().trim();
+
+            let svg = `
+                <defs>
+                    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#00ff9d" />
+                    </marker>
+                    <marker id="arrow-red" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#ff2a5f" />
+                    </marker>
+                    <marker id="arrow-cyan" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#00f0ff" />
+                    </marker>
+                    <marker id="arrow-purple" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#c084fc" />
+                    </marker>
+                    <filter id="glow-red" x="-20%" y="-20%" width="140%" height="140%">
+                        <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#ff2a5f" flood-opacity="0.8"/>
+                    </filter>
+                    <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
+                        <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#00f0ff" flood-opacity="0.5"/>
+                    </filter>
+                </defs>
+            `;
+
+            // 1. Render Directed Edges
+            for (const edge of edges) {
+                const marker = edge.marker || 'cyan';
+                const dash = edge.dashed ? 'stroke-dasharray="4,4"' : '';
+                svg += `<line x1="${edge.x1}" y1="${edge.y1}" x2="${edge.x2}" y2="${edge.y2}" stroke="${edge.color || '#00f0ff'}" stroke-width="${edge.width || 1.8}" marker-end="url(#arrow-${marker})" ${dash} opacity="0.85" />`;
+            }
+
+            // 2. Render Process and Socket Nodes
+            for (const node of nodes) {
+                const isMatch = !query || (node.name && node.name.toLowerCase().includes(query)) || String(node.pid).includes(query) || (node.badge && node.badge.toLowerCase().includes(query));
+                const isDimmed = (this.suspiciousOnly && !node.is_suspicious) || (query && !isMatch);
+                const opacity = isDimmed ? '0.2' : '1.0';
+
+                if (node.type === 'process') {
+                    const w = node.width || 160;
+                    const h = node.height || 44;
+                    const rx = node.x - (w / 2);
+                    const ry = node.y - (h / 2);
+                    const name = this.escapeHtml(node.name || 'process.exe');
+                    const suspBadge = node.is_suspicious ? ' [!]' : '';
+                    const badge = this.escapeHtml(node.badge || ('PID: ' + node.pid));
+                    const filter = node.is_suspicious ? 'filter="url(#glow-red)"' : '';
+
+                    svg += `
+                        <g class="cursor-pointer transition-all duration-150 hover:opacity-80" opacity="${opacity}" data-node-pid="${node.pid}" data-node-id="${node.id}" ${filter}>
+                            <rect x="${rx}" y="${ry}" width="${w}" height="${h}" rx="6" fill="${node.fill || '#04070e'}" stroke="${node.stroke || '#00f0ff'}" stroke-width="${node.stroke_width || 1.5}" />
+                            <text x="${rx + 12}" y="${ry + 19}" fill="${node.title_color || '#ffffff'}" font-family="'Orbitron', sans-serif" font-size="11" font-weight="bold">${name}${suspBadge}</text>
+                            <text x="${rx + 12}" y="${ry + 33}" fill="${node.sub_color || '#64748b'}" font-family="monospace" font-size="9">${badge}</text>
+                        </g>
+                    `;
+                } else if (node.type === 'socket') {
+                    const r = node.radius || 22;
+                    svg += `
+                        <g class="cursor-pointer transition-all duration-150 hover:opacity-80" opacity="${opacity}" data-node-pid="${node.pid}" data-node-id="${node.id}">
+                            <circle cx="${node.x}" cy="${node.y}" r="${r}" fill="${node.fill || '#1e1b4b'}" stroke="${node.stroke || '#c084fc'}" stroke-width="1.5" />
+                            <text x="${node.x}" y="${node.y - 3}" text-anchor="middle" fill="${node.stroke || '#c084fc'}" font-family="'Orbitron', sans-serif" font-size="8" font-weight="bold">${this.escapeHtml(node.proto || 'TCP')}</text>
+                            <text x="${node.x}" y="${node.y + 9}" text-anchor="middle" fill="#e2e8f0" font-family="monospace" font-size="7">${this.escapeHtml(node.port || '')}</text>
+                        </g>
+                    `;
+                }
+            }
+
+            return svg;
+        },
+
+        handleSvgClick(event) {
+            const nodeEl = event.target.closest('[data-node-pid]');
+            if (!nodeEl) return;
+            const pid = parseInt(nodeEl.getAttribute('data-node-pid'), 10);
+            if (!pid) return;
+            const proc = this.findProcessByPid(pid);
+            if (proc) {
+                this.inspectProcess(proc);
+            } else if (this.processGraph.graph_nodes) {
+                const gn = this.processGraph.graph_nodes.find(n => n.pid === pid);
+                if (gn) this.inspectProcess(gn);
+            }
+        },
+
+        escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         },
         
         async updateStatus(newStatus) {

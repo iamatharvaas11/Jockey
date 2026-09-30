@@ -43,12 +43,18 @@ class IOCRule:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "IOCRule":
         RuleValidator.validate(data)
+        raw_enabled = data.get("enabled", True)
+        if isinstance(raw_enabled, str):
+            enabled = raw_enabled.strip().lower() in ("true", "1", "yes", "enabled")
+        else:
+            enabled = bool(raw_enabled)
+
         return cls(
             rule_id=str(data["rule_id"]),
             name=str(data["name"]),
             description=str(data.get("description", "")),
             severity=str(data["severity"]).lower(),
-            enabled=bool(data.get("enabled", True)),
+            enabled=enabled,
             evidence_types=[str(t).lower() for t in data["evidence_types"]],
             conditions=dict(data.get("conditions", {})),
             explanation=str(data.get("explanation", "")),

@@ -187,11 +187,15 @@
                     </a>
                 </li>
                 <li>
-                    <a href="/audit" 
-                       class="flex items-center gap-3 px-3 py-2 rounded text-xs font-hud font-semibold uppercase tracking-wider transition-all duration-200 group {% if request.path == '/audit' %}bg-cyan-950/40 text-cyber-cyan border-l-2 border-cyber-cyan shadow-[inset_0_0_12px_rgba(0,240,255,0.1)] font-bold{% else %}text-slate-400 hover:text-white hover:bg-slate-800/40 hover:border-l-2 hover:border-slate-500{% endif %}" 
-                       title="Audit & Chain of Custody">
-                        <i class="fa-solid fa-shield-halved w-5 text-center text-sm group-hover:text-cyber-cyan transition-colors"></i>
+                    <a href="/audit" class="flex items-center gap-3 px-3 py-2 rounded text-xs font-hud font-semibold uppercase tracking-wider transition-all duration-200 group {% if request.path == '/audit' %}bg-cyan-950/40 text-cyber-cyan border-l-2 border-cyber-cyan shadow-[inset_0_0_12px_rgba(0,240,255,0.1)] font-bold{% else %}text-slate-400 hover:text-white hover:bg-slate-800/40 hover:border-l-2 hover:border-slate-500{% endif %}" title="Audit Trail">
+                        <i class="fa-solid fa-list-check w-5 text-center text-sm group-hover:text-cyber-cyan transition-colors"></i>
                         <span x-show="sidebarOpen" class="truncate">Audit Trail</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/security" class="flex items-center gap-3 px-3 py-2 rounded text-xs font-hud font-semibold uppercase tracking-wider transition-all duration-200 group {% if request.path == '/security' %}bg-cyan-950/40 text-cyber-cyan border-l-2 border-cyber-cyan shadow-[inset_0_0_12px_rgba(0,240,255,0.1)] font-bold{% else %}text-slate-400 hover:text-white hover:bg-slate-800/40 hover:border-l-2 hover:border-slate-500{% endif %}" title="Defensive Security Scanner">
+                        <i class="fa-solid fa-shield-virus w-5 text-center text-sm group-hover:text-cyber-red transition-colors"></i>
+                        <span x-show="sidebarOpen" class="truncate">Security</span>
                     </a>
                 </li>
                 <li>

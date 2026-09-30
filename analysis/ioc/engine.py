@@ -37,20 +37,35 @@ class IOCEngine:
     def add_rule(self, rule: IOCRule):
         """Add an IOCRule to the engine."""
         self._rules.append(rule)
-        # Precompile regexes if present
-        patterns = rule.conditions.get("regex_patterns", [])
-        if patterns:
-            self._compiled_regexes[rule.rule_id] = [re.compile(p) for p in patterns]
+        # Precompile regexes safely if present
+        patterns = rule.conditions.get("regex_patterns", []) if isinstance(rule.conditions, dict) else []
+        if patterns and isinstance(patterns, list):
+            compiled = []
+            for p in patterns:
+                try:
+                    compiled.append(re.compile(p))
+                except (re.error, TypeError):
+                    pass
+            if compiled:
+                self._compiled_regexes[rule.rule_id] = compiled
 
     def load_rules_from_file(self, file_path: str):
         """Load and validate rules from a JSON configuration file."""
-        with open(file_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError, ValueError):
+            return
 
-        raw_rules = data.get("rules", [])
-        for r_dict in raw_rules:
-            rule = IOCRule.from_dict(r_dict)
-            self.add_rule(rule)
+        raw_rules = data.get("rules", []) if isinstance(data, dict) else []
+        if isinstance(raw_rules, list):
+            for r_dict in raw_rules:
+                if isinstance(r_dict, dict):
+                    try:
+                        rule = IOCRule.from_dict(r_dict)
+                        self.add_rule(rule)
+                    except Exception:
+                        continue
 
     def evaluate_item(
         self,
@@ -110,9 +125,9 @@ class IOCEngine:
         conds = rule.conditions
 
         # 1. Hash match condition
-        if "target_hashes" in conds:
-            target_hashes = {h.lower() for h in conds["target_hashes"]}
-            fields_to_check = conds.get("hash_match_fields", ["sha256", "md5", "exe_hash"])
+        if conds.get("target_hashes"):
+            target_hashes = {str(h).lower() for h in conds["target_hashes"] if h is not None}
+            fields_to_check = conds.get("hash_match_fields") or ["sha256", "md5", "exe_hash"]
             for f in fields_to_check:
                 val = str(data.get(f) or "").lower()
                 if val and val in target_hashes:
@@ -133,37 +148,40 @@ class IOCEngine:
                         }
 
         # 3. Parent-Child process relationship match
-        if "parent_child_pairs" in conds and process_map:
+        if conds.get("parent_child_pairs") and process_map:
             ppid = data.get("ppid")
             c_name = str(data.get("name") or "").lower()
             if ppid in process_map:
                 parent_proc = process_map[ppid]
                 p_name = str(parent_proc.data.get("name") or "").lower()
                 for pair in conds["parent_child_pairs"]:
-                    if pair["parent"].lower() == p_name and pair["child"].lower() == c_name:
+                    if pair.get("parent", "").lower() == p_name and pair.get("child", "").lower() == c_name:
                         return True, f"Suspicious parent '{p_name}' (PID {ppid}) spawned child '{c_name}' (PID {data.get('pid')})", {
                             "parent": parent_proc.data,
                             "child": data,
                         }
 
         # 4. Remote IP connection match
-        if "target_ips" in conds:
-            target_ips = set(conds["target_ips"])
+        if conds.get("target_ips"):
+            target_ips = {str(ip) for ip in conds["target_ips"] if ip is not None}
             f_name = conds.get("field", "remote_ip")
             ip_val = str(data.get(f_name) or "")
             if ip_val and ip_val in target_ips:
                 return True, f"Connection to known suspicious IP '{ip_val}'", {f_name: ip_val}
 
         # 5. Event ID and message match
-        if "event_ids" in conds:
+        if conds.get("event_ids"):
             e_id = data.get("event_id")
             if e_id in conds["event_ids"]:
                 return True, f"Matched event ID {e_id}", {"event_id": e_id}
 
-        if "message_regex" in conds:
+        if conds.get("message_regex"):
             msg = str(data.get("message") or "")
-            if msg and re.search(conds["message_regex"], msg):
-                return True, f"Event message matched pattern '{conds['message_regex']}'", {"message": msg[:150]}
+            try:
+                if msg and re.search(conds["message_regex"], msg):
+                    return True, f"Event message matched pattern '{conds['message_regex']}'", {"message": msg[:150]}
+            except re.error:
+                pass
 
         return False, "", {}
 

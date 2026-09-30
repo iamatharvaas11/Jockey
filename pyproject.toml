@@ -24,6 +24,7 @@ dependencies = [
     "psutil>=5.9.0",
     "lark>=1.1.0",
     "llvmlite>=0.41.0",
+    "pefile>=2023.2.7",
 ]
 
 [project.optional-dependencies]
@@ -52,6 +53,7 @@ packages = [
     "analysis.ioc",
     "analysis.correlation",
     "analysis.timeline",
+    "analysis.security",
     "agent",
     "resilience",
     "backend",

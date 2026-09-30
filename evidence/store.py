@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 import json
 import os
 from typing import Any, Dict, List, Optional
+import uuid
 
 from evidence.integrity import EvidenceIntegrityManager, IntegrityManifest, VerificationReport
 from evidence.schema import CanonicalEvidenceItem
@@ -79,10 +80,19 @@ class InMemoryEvidenceStore(EvidenceStore):
         v_res = EvidenceValidator.validate(item)
         if not v_res.is_valid:
             item.errors.extend(v_res.errors)
+            item.status = "failed"
 
         # Attach hash if missing
         if not item.hash:
             EvidenceIntegrityManager.attach_hash(item)
+
+        # Handle duplicate ID collision: preserve existing evidence and generate disambiguated ID
+        if item.id in self._items:
+            base_id = item.id
+            version = 1
+            while f"{base_id}_dup{version}" in self._items:
+                version += 1
+            item.id = f"{base_id}_dup{version}"
 
         self._items[item.id] = item
         return item.id
@@ -133,21 +143,30 @@ class InMemoryEvidenceStore(EvidenceStore):
             "items": [it.to_dict() for it in self._items.values()],
         }
 
-        with open(path, "w", encoding="utf-8") as f:
+        temp_path = f"{path}.tmp_{uuid.uuid4().hex}"
+        with open(temp_path, "w", encoding="utf-8") as f:
             json.dump(export_payload, f, indent=2, ensure_ascii=False)
+        os.replace(temp_path, path)
 
         return path
 
     def import_json(self, path: str) -> int:
-        with open(path, "r", encoding="utf-8") as f:
-            payload = json.load(f)
+        if not os.path.exists(path):
+            return 0
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                payload = json.load(f)
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+            return 0
 
         imported_count = 0
-        raw_items = payload.get("items", [])
-        for raw in raw_items:
-            item = CanonicalEvidenceItem.from_dict(raw)
-            self.add(item)
-            imported_count += 1
+        raw_items = payload.get("items", []) if isinstance(payload, dict) else []
+        if isinstance(raw_items, list):
+            for raw in raw_items:
+                if isinstance(raw, dict):
+                    item = CanonicalEvidenceItem.from_dict(raw)
+                    self.add(item)
+                    imported_count += 1
 
         return imported_count
 

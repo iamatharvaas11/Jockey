@@ -49,13 +49,17 @@ class JockyRuntime:
 
     def execute_script(self, source_code: str) -> ExecutionResult:
         """Parse and execute a JOCKY script from source code."""
-        self.result = ExecutionResult()
+        if not self.result or not self.result.collected_evidence:
+            self.result = ExecutionResult()
+        else:
+            self.result.errors = []
+            self.result.success = False
         start_time = time.time()
 
         try:
             ast = parse_source(source_code)
             self.execute_ast(ast)
-            self.result.success = True
+            self.result.success = (len(self.result.errors) == 0)
         except Exception as e:
             self.result.errors.append(str(e))
             self.result.success = False
@@ -152,7 +156,10 @@ class JockyRuntime:
                 self._handle_scan(ScanStmt(scan_target='REGISTRY'))
                 return
             else:
-                print(f"\033[93m[!] Unknown scan target: {target}\033[0m")
+                msg = f"Unknown scan target: {target}"
+                print(f"\033[93m[!] {msg}\033[0m")
+                self.result.errors.append(msg)
+                self.result.success = False
                 return
 
             self.result.collected_evidence[target.lower()] = data
@@ -161,6 +168,8 @@ class JockyRuntime:
         except Exception as e:
             print(f"\033[91m[-] Error scanning {target}: {e}\033[0m")
             self.result.collected_evidence[target.lower()] = []
+            self.result.errors.append(f"Error scanning {target}: {e}")
+            self.result.success = False
 
     def _scan_processes(self) -> list:
         """Collect running processes via platform adapter."""
@@ -327,7 +336,10 @@ class JockyRuntime:
                 print(f"\033[92m[+] Timeline exported: {tl_path}\033[0m")
 
         except Exception as e:
-            print(f"\033[91m[-] Export error: {e}\033[0m")
+            msg = f"Export error: {e}"
+            print(f"\033[91m[-] {msg}\033[0m")
+            self.result.errors.append(msg)
+            self.result.success = False
 
     def _handle_set(self, stmt: SetStmt):
         """Handle SET statement — store configuration variable."""
@@ -343,20 +355,62 @@ class JockyRuntime:
 
     def _handle_filter(self, stmt: FilterStmt):
         """Handle FILTER statement — filter collected evidence."""
-        print(f"\033[96m[*] Applying filter...\033[0m")
-        # Basic filter implementation
         cond = stmt.condition
-        if isinstance(cond, Condition):
-            field_name = self._resolve_value(cond.left)
-            op = cond.operator
-            compare_val = self._resolve_value(cond.right)
-            print(f"\033[92m[+] Filter applied: {field_name} {op} {compare_val}\033[0m")
+        if not isinstance(cond, Condition):
+            return
+
+        raw_left = cond.left
+        if isinstance(raw_left, Identifier):
+            field_name = raw_left.name
+        elif isinstance(raw_left, PropertyAccess):
+            field_name = raw_left.prop
+        elif isinstance(raw_left, str):
+            field_name = raw_left
+        else:
+            field_name = str(self._resolve_value(raw_left))
+
+        op = cond.operator
+        compare_val = self._resolve_value(cond.right)
+
+        print(f"\033[96m[*] Applying filter: {field_name} {op} {compare_val}...\033[0m")
+
+        for category, items in list(self.result.collected_evidence.items()):
+            if not isinstance(items, list):
+                continue
+            filtered = []
+            has_matching_field = False
+            for item in items:
+                val = None
+                matched_key = False
+                if isinstance(item, dict):
+                    if field_name in item:
+                        matched_key = True
+                        val = item[field_name]
+                    elif field_name.lower() in item:
+                        matched_key = True
+                        val = item[field_name.lower()]
+                elif hasattr(item, field_name):
+                    matched_key = True
+                    val = getattr(item, field_name)
+
+                if matched_key:
+                    has_matching_field = True
+                    if _eval_op(val, op, compare_val):
+                        filtered.append(item)
+                else:
+                    filtered.append(item)
+
+            if has_matching_field:
+                self.result.collected_evidence[category] = filtered
 
     def _handle_if(self, stmt: IfStmt):
         """Handle IF statement — conditional execution."""
         if self._evaluate_condition(stmt.condition):
             for body_stmt in stmt.body:
                 self._execute_statement(body_stmt)
+        elif stmt.else_body:
+            for else_stmt in stmt.else_body:
+                self._execute_statement(else_stmt)
 
     def _handle_foreach(self, stmt: ForEachStmt):
         """Handle FOREACH statement — iterate over collection."""
@@ -369,28 +423,25 @@ class JockyRuntime:
             for body_stmt in stmt.body:
                 self._execute_statement(body_stmt)
 
-    def _evaluate_condition(self, condition: Condition) -> bool:
+    def _evaluate_condition(self, condition: Any) -> bool:
         """Evaluate a condition expression."""
         try:
-            left = self._resolve_value(condition.left)
-            right = self._resolve_value(condition.right)
-            op = condition.operator
-
-            if op == '==':
-                return str(left) == str(right)
-            elif op == '!=':
-                return str(left) != str(right)
-            elif op == '>=':
-                return str(left) >= str(right)
-            elif op == '<=':
-                return str(left) <= str(right)
-            elif op == '>':
-                return str(left) > str(right)
-            elif op == '<':
-                return str(left) < str(right)
+            from compiler.ast_nodes import UnaryExpr, BinaryExpr
+            if isinstance(condition, UnaryExpr) and condition.operator == 'NOT':
+                return not self._evaluate_condition(condition.operand)
+            if isinstance(condition, BinaryExpr):
+                if condition.operator == 'AND':
+                    return self._evaluate_condition(condition.left) and self._evaluate_condition(condition.right)
+                elif condition.operator == 'OR':
+                    return self._evaluate_condition(condition.left) or self._evaluate_condition(condition.right)
+            if isinstance(condition, Condition):
+                left = self._resolve_value(condition.left)
+                right = self._resolve_value(condition.right)
+                return _eval_op(left, condition.operator, right)
+            val = self._resolve_value(condition)
+            return bool(val)
         except Exception:
-            pass
-        return True  # Default to true for demo
+            return False
 
     def _resolve_value(self, val) -> Any:
         """Resolve an AST value node to a Python value."""
@@ -405,6 +456,60 @@ class JockyRuntime:
             if isinstance(obj, dict):
                 return obj.get(val.prop, '')
             return f"{val.obj}.{val.prop}"
+        elif isinstance(val, Identifier):
+            if val.name in self.variables:
+                return self.variables[val.name]
+            return val.name
         elif isinstance(val, str):
             return self.variables.get(val, val)
         return val
+
+
+def _to_number(val: Any):
+    if isinstance(val, bool):
+        return None
+    if isinstance(val, (int, float)):
+        return val
+    if isinstance(val, str):
+        s = val.strip()
+        try:
+            if '.' in s:
+                return float(s)
+            return int(s)
+        except (ValueError, TypeError):
+            return None
+    return None
+
+
+def _eval_op(left: Any, op: str, right: Any) -> bool:
+    l_num = _to_number(left)
+    r_num = _to_number(right)
+    if l_num is not None and r_num is not None:
+        if op == '==':
+            return l_num == r_num
+        elif op == '!=':
+            return l_num != r_num
+        elif op == '>=':
+            return l_num >= r_num
+        elif op == '<=':
+            return l_num <= r_num
+        elif op == '>':
+            return l_num > r_num
+        elif op == '<':
+            return l_num < r_num
+    else:
+        if op == '==':
+            return left == right or str(left) == str(right)
+        elif op == '!=':
+            return left != right and str(left) != str(right)
+        elif op == '>=':
+            return str(left) >= str(right)
+        elif op == '<=':
+            return str(left) <= str(right)
+        elif op == '>':
+            return str(left) > str(right)
+        elif op == '<':
+            return str(left) < str(right)
+        elif op == 'CONTAINS':
+            return str(right) in str(left)
+    return False

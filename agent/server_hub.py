@@ -104,7 +104,7 @@ class AgentServerHub:
         return {"status": "ACK", "agent_status": "ONLINE", "pending_tasks": pending_count}
 
     def check_agent_statuses(self) -> Dict[str, str]:
-        """Identify stale heartbeats and transition inactive agents to OFFLINE."""
+        """Identify stale heartbeats and transition inactive agents to OFFLINE, and enforce task timeouts."""
         now_dt = datetime.now(timezone.utc)
         statuses = {}
         for agent_id, data in self._agents.items():
@@ -113,6 +113,19 @@ class AgentServerHub:
             if now_dt - last_hb_dt > timedelta(seconds=self.heartbeat_timeout_seconds):
                 data["status"] = "OFFLINE"
             statuses[agent_id] = data["status"]
+
+        # Check running tasks for timeouts (H04)
+        for task in self._tasks.values():
+            if task.status == TaskStatus.RUNNING and task.assigned_at:
+                try:
+                    assigned_dt = datetime.fromisoformat(task.assigned_at)
+                    timeout = task.timeout_seconds if task.timeout_seconds is not None else 60
+                    if (now_dt - assigned_dt).total_seconds() >= timeout:
+                        task.status = TaskStatus.TIMEOUT
+                        task.error_message = f"Task exceeded timeout of {timeout}s"
+                except Exception:
+                    pass
+
         return statuses
 
     # ========================================================================
@@ -178,6 +191,19 @@ class AgentServerHub:
             raise ValueError(f"Task ID {task_id} does not exist in central hub.")
 
         task = self._tasks[task_id]
+
+        # Preserve agent failure status
+        if task_result.status == TaskStatus.FAILED:
+            task.status = TaskStatus.FAILED
+            task.error_message = "; ".join(task_result.errors) if task_result.errors else "Agent task execution failed"
+            task.completed_at = datetime.now(timezone.utc).isoformat()
+            self._results[task_id] = task_result
+            return {
+                "task_id": task_id,
+                "status": "ACCEPTED",
+                "task_status": TaskStatus.FAILED.value,
+                "errors": task_result.errors,
+            }
 
         # Verify cryptographic integrity if manifest is present
         integrity_valid = True

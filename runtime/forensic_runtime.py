@@ -32,19 +32,7 @@ class RuntimeContext:
     executed_finds: List[str] = field(default_factory=list)
     executed_builds: List[str] = field(default_factory=list)
     executed_exports: List[tuple] = field(default_factory=list)
-    collections: Dict[int, List[dict]] = field(default_factory=lambda: {
-        1: [
-            {"pid": 4, "ppid": 0, "name": "System", "status": "RUNNING"},
-            {"pid": 1004, "ppid": 4, "name": "svchost.exe", "status": "RUNNING"},
-            {"pid": 2048, "ppid": 1004, "name": "powershell.exe", "status": "RUNNING"},
-        ],
-        2: [
-            {"path": "C:\\Windows\\System32\\cmd.exe", "size": 289792},
-        ],
-        3: [
-            {"protocol": "TCP", "local_ip": "127.0.0.1", "local_port": 8000, "remote_ip": "0.0.0.0", "remote_port": 0},
-        ],
-    })
+    collections: Dict[int, List[dict]] = field(default_factory=dict)
     errors: List[str] = field(default_factory=list)
     limitations: List[str] = field(default_factory=list)
     start_time: str = field(default_factory=lambda: datetime.datetime.now(timezone.utc).isoformat())
@@ -76,19 +64,7 @@ class ForensicRuntime:
         self.context.executed_exports.clear()
         self.context.errors.clear()
         self.context.limitations.clear()
-        self.context.collections = {
-            1: [
-                {"pid": 4, "ppid": 0, "name": "System", "status": "RUNNING"},
-                {"pid": 1004, "ppid": 4, "name": "svchost.exe", "status": "RUNNING"},
-                {"pid": 2048, "ppid": 1004, "name": "powershell.exe", "status": "RUNNING"},
-            ],
-            2: [
-                {"path": "C:\\Windows\\System32\\cmd.exe", "size": 289792},
-            ],
-            3: [
-                {"protocol": "TCP", "local_ip": "127.0.0.1", "local_port": 8000, "remote_ip": "0.0.0.0", "remote_port": 0},
-            ],
-        }
+        self.context.collections = {}
         # Initialize system info
         try:
             sys_info = self.adapter.get_system_info()

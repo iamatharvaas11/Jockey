@@ -2,7 +2,8 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     auth, investigations, endpoints_api, artifacts, iocs, timeline,
-    compiler_api, audit_logs, evidence_api, reports_api, relationships_api, stats_api
+    compiler_api, audit_logs, evidence_api, reports_api, relationships_api, stats_api,
+    settings_api, health_api, security_api
 )
 
 api_router = APIRouter()
@@ -19,3 +20,7 @@ api_router.include_router(evidence_api.router)
 api_router.include_router(reports_api.router)
 api_router.include_router(relationships_api.router)
 api_router.include_router(stats_api.router)
+api_router.include_router(settings_api.router)
+api_router.include_router(health_api.router)
+api_router.include_router(security_api.router)
+

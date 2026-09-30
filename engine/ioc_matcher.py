@@ -24,7 +24,12 @@ class IOCMatcher:
             r"(?i)mshta.*http",
             r"(?i)wmic.*process call create"
         ]
-        self.compiled_patterns = [re.compile(p) for p in self.pattern_iocs]
+        self.compiled_patterns = []
+        for p in self.pattern_iocs:
+            try:
+                self.compiled_patterns.append(re.compile(p))
+            except re.error:
+                pass
 
     def match_hash(self, file_hash: str) -> dict | None:
         if file_hash and file_hash in self.hash_iocs:

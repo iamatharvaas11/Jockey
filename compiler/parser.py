@@ -89,10 +89,13 @@ class JockyTransformer(Transformer):
         return s
 
     def NUMBER(self, token: LarkToken) -> Union[int, float]:
-        val = float(token)
-        if val == int(val):
-            return int(val)
-        return val
+        s = str(token)
+        if '.' in s or 'e' in s or 'E' in s:
+            return float(s)
+        try:
+            return int(s)
+        except ValueError:
+            return float(s)
 
     def BOOL(self, token: LarkToken) -> bool:
         return str(token).lower() == "true"
@@ -232,8 +235,11 @@ class JockyTransformer(Transformer):
             i += 2
         return left
 
-    def id_expr(self, meta, children: List[Any]) -> Identifier:
-        return Identifier(name=str(children[0]), location=self._get_loc(meta))
+    def id_expr(self, meta, children: List[Any]) -> Any:
+        name = str(children[0])
+        if name.lower() in ("true", "false"):
+            return BoolLiteral(value=(name.lower() == "true"), location=self._get_loc(meta))
+        return Identifier(name=name, location=self._get_loc(meta))
 
     def property(self, meta, children: List[Any]) -> PropertyAccess:
         return PropertyAccess(obj=str(children[0]), prop=str(children[1]), location=self._get_loc(meta))
@@ -343,6 +349,13 @@ def parse(source_code: str, filename: Optional[str] = None) -> Program:
     except LarkError as e:
         loc = SourceLocation(line=1, column=1, file=filename)
         raise ParserError(f"Parsing failed: {e}", loc, code=DiagnosticCode.SYNTAX_ERROR) from e
+    except RecursionError as e:
+        loc = SourceLocation(line=1, column=1, file=filename)
+        raise ParserError("Maximum recursion depth exceeded (nesting is too deep)", loc, code=DiagnosticCode.SYNTAX_ERROR, hint="Reduce statement or expression nesting depth.") from e
 
-    transformer = JockyTransformer(filename=filename)
-    return transformer.transform(tree)
+    try:
+        transformer = JockyTransformer(filename=filename)
+        return transformer.transform(tree)
+    except RecursionError as e:
+        loc = SourceLocation(line=1, column=1, file=filename)
+        raise ParserError("Maximum recursion depth exceeded (nesting is too deep)", loc, code=DiagnosticCode.SYNTAX_ERROR, hint="Reduce statement or expression nesting depth.") from e

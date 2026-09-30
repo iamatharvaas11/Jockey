@@ -71,5 +71,5 @@ MUL_OP: "*" | "/"
 property: ID "." ID
 value: STRING | NUMBER | BOOL
 
-BOOL: "true" | "false" | "TRUE" | "FALSE"
+BOOL.2: "true" | "false" | "TRUE" | "FALSE"
 OPERATOR: "==" | "!=" | ">=" | "<=" | ">" | "<" | "CONTAINS"

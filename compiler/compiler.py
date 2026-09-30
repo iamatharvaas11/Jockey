@@ -52,64 +52,79 @@ class JockyCompiler:
                 errors=[pe.diagnostic.format()],
                 warnings=[],
             )
+        except RecursionError:
+            return CompileResult(
+                success=False,
+                ast=None,
+                errors=["Parsing failed: Maximum recursion depth exceeded (source code nesting is too deep)"],
+                warnings=[],
+            )
         except Exception as e:
             return CompileResult(False, None, errors=[str(e)])
 
-        # Phase 2: Semantic Analysis
-        diag_bag = self.semantic_analyzer.analyze_diagnostics(ast)
-        errors = [d.format() for d in diag_bag.errors]
-        warnings = [d.format() for d in diag_bag.warnings]
-
-        if diag_bag.has_errors:
-            return CompileResult(
-                success=False,
-                ast=ast,
-                errors=errors,
-                warnings=warnings,
-                diagnostics=diag_bag,
-            )
-
-        # Phase 3: JOCKY IR Generation & Verification
         try:
-            jocky_ir = self.ir_generator.build_jocky_ir(ast)
-        except Exception as e:
-            return CompileResult(
-                success=False,
-                ast=ast,
-                errors=[f"JOCKY IR generation failed: {e}"],
-                warnings=warnings,
-                diagnostics=diag_bag,
-            )
+            # Phase 2: Semantic Analysis
+            diag_bag = self.semantic_analyzer.analyze_diagnostics(ast)
+            errors = [d.format() for d in diag_bag.errors]
+            warnings = [d.format() for d in diag_bag.warnings]
 
-        # Phase 4: LLVM IR Generation & Verification
-        try:
-            llvm_module = self.ir_generator.llvm_codegen.generate(jocky_ir)
-            llvm_ir_str = self.ir_generator.llvm_codegen.verify(llvm_module)
-        except Exception as e:
-            return CompileResult(
-                success=False,
-                ast=ast,
-                jocky_ir=jocky_ir,
-                errors=[f"LLVM generation or verification failed: {e}"],
-                warnings=warnings,
-                diagnostics=diag_bag,
-            )
+            if diag_bag.has_errors:
+                return CompileResult(
+                    success=False,
+                    ast=ast,
+                    errors=errors,
+                    warnings=warnings,
+                    diagnostics=diag_bag,
+                )
 
-        # Phase 5: Optional Native Object Code Emission
-        obj_bytes = None
-        if emit_object:
+            # Phase 3: JOCKY IR Generation & Verification
             try:
-                obj_bytes = self.native_compiler.emit_object(llvm_ir_str)
+                jocky_ir = self.ir_generator.build_jocky_ir(ast)
+            except Exception as e:
+                return CompileResult(
+                    success=False,
+                    ast=ast,
+                    errors=[f"JOCKY IR generation failed: {e}"],
+                    warnings=warnings,
+                    diagnostics=diag_bag,
+                )
+
+            # Phase 4: LLVM IR Generation & Verification
+            try:
+                llvm_module = self.ir_generator.llvm_codegen.generate(jocky_ir)
+                llvm_ir_str = self.ir_generator.llvm_codegen.verify(llvm_module)
             except Exception as e:
                 return CompileResult(
                     success=False,
                     ast=ast,
                     jocky_ir=jocky_ir,
-                    ir_code=llvm_ir_str,
-                    errors=[f"Native object compilation failed: {e}"],
+                    errors=[f"LLVM generation or verification failed: {e}"],
                     warnings=warnings,
                     diagnostics=diag_bag,
                 )
+
+            # Phase 5: Optional Native Object Code Emission
+            obj_bytes = None
+            if emit_object:
+                try:
+                    obj_bytes = self.native_compiler.emit_object(llvm_ir_str)
+                except Exception as e:
+                    return CompileResult(
+                        success=False,
+                        ast=ast,
+                        jocky_ir=jocky_ir,
+                        ir_code=llvm_ir_str,
+                        errors=[f"Native object compilation failed: {e}"],
+                        warnings=warnings,
+                        diagnostics=diag_bag,
+                    )
+        except RecursionError:
+            return CompileResult(
+                success=False,
+                ast=ast,
+                errors=["Compilation failed: Maximum recursion depth exceeded (source code nesting is too deep)"],
+                warnings=[],
+            )
 
         return CompileResult(
             success=True,

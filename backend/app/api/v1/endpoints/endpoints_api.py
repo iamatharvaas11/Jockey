@@ -54,7 +54,12 @@ async def list_endpoints(investigation_id: str, db: AsyncSession = Depends(get_d
     return result.scalars().all()
 
 @router.post("/investigations/{investigation_id}/endpoints", response_model=EndpointResponse)
-async def create_endpoint(investigation_id: str, ep_in: EndpointCreate, db: AsyncSession = Depends(get_db)):
+async def create_endpoint(
+    investigation_id: str,
+    ep_in: EndpointCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     # Verify investigation exists
     inv_result = await db.execute(select(Investigation).filter(Investigation.id == investigation_id))
     if not inv_result.scalars().first():

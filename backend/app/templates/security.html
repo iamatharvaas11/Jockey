@@ -1,0 +1,495 @@
+{% extends 'base.html' %}
+
+{% block title %}Security Scanner - JOCKY HUD{% endblock %}
+
+{% block content %}
+<div x-data="securityScanner()" class="h-full flex flex-col gap-6" x-init="init()">
+    
+    <!-- Header Section -->
+    <div class="hud-panel p-6 border-b border-cyber-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-[0_0_20px_rgba(0,240,255,0.05)]">
+        <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded bg-cyber-dark border border-cyber-border flex items-center justify-center shadow-[inset_0_0_15px_rgba(0,240,255,0.1)] relative overflow-hidden">
+                <i class="fa-solid fa-shield-virus text-2xl text-cyber-cyan animate-pulse"></i>
+                <div class="absolute top-0 left-0 w-full h-[1px] bg-cyber-cyan/50 animate-[scan_2s_linear_infinite]"></div>
+            </div>
+            <div>
+                <h1 class="text-2xl font-hud font-bold text-cyber-cyan tracking-widest uppercase flex items-center gap-3">
+                    Defensive Security Scanner
+                    <span x-show="scanning" class="px-2 py-0.5 rounded text-[10px] bg-cyber-cyan/20 border border-cyber-cyan text-cyber-cyan animate-pulse">Scanning...</span>
+                </h1>
+                <p class="text-sm font-data text-slate-400 tracking-wider">Blue-Team Endpoint Integrity Verification & Evasion Detection Suite</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-3">
+            <button @click="showBinaryModal = true" class="px-4 py-2 rounded text-xs font-hud font-bold tracking-wider bg-purple-950/40 border border-purple-500/50 text-purple-300 hover:bg-purple-900/60 hover:text-white transition-all shadow-[0_0_10px_rgba(168,85,247,0.2)] disabled:opacity-50" :disabled="scanning">
+                <i class="fa-solid fa-file-code mr-2"></i> SCAN BINARY
+            </button>
+            <button @click="showProcessModal = true" class="px-4 py-2 rounded text-xs font-hud font-bold tracking-wider bg-amber-950/40 border border-amber-500/50 text-amber-300 hover:bg-amber-900/60 hover:text-white transition-all shadow-[0_0_10px_rgba(245,158,11,0.2)] disabled:opacity-50" :disabled="scanning">
+                <i class="fa-solid fa-microchip mr-2"></i> SCAN PROCESS
+            </button>
+            <button @click="runLiveScan()" class="px-5 py-2 rounded text-xs font-hud font-bold tracking-wider bg-cyan-950/60 border border-cyber-cyan text-cyber-cyan hover:bg-cyber-cyan hover:text-black transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center" :disabled="scanning">
+                <i class="fa-solid" :class="scanning && scanType === 'live' ? 'fa-circle-notch fa-spin mr-2' : 'fa-radar mr-2'"></i>
+                <span x-text="scanning && scanType === 'live' ? 'SCANNING...' : 'LIVE HOST SCAN'"></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- KPI Cards (Only shown if scanResult exists) -->
+    <template x-if="scanResult">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <!-- Critical -->
+            <div class="hud-panel p-4 flex items-center gap-4 relative overflow-hidden group">
+                <div class="absolute right-0 top-0 h-full w-1 bg-cyber-red"></div>
+                <div class="w-12 h-12 rounded-full bg-red-950/50 border border-red-500/30 flex items-center justify-center" :class="{'animate-pulse border-red-500 shadow-[0_0_15px_rgba(255,42,95,0.5)] text-cyber-red': scanResult.summary.critical > 0, 'text-slate-500': scanResult.summary.critical === 0}">
+                    <i class="fa-solid fa-radiation text-xl"></i>
+                </div>
+                <div>
+                    <div class="text-3xl font-data font-bold tracking-widest text-white group-hover:text-cyber-red transition-colors" x-text="scanResult.summary.critical">0</div>
+                    <div class="text-xs font-hud text-slate-400 tracking-wider">CRITICAL FINDINGS</div>
+                </div>
+            </div>
+            
+            <!-- High -->
+            <div class="hud-panel p-4 flex items-center gap-4 relative overflow-hidden group">
+                <div class="absolute right-0 top-0 h-full w-1 bg-amber-500"></div>
+                <div class="w-12 h-12 rounded-full bg-amber-950/50 border border-amber-500/30 flex items-center justify-center" :class="{'text-amber-500': scanResult.summary.high > 0, 'text-slate-500': scanResult.summary.high === 0}">
+                    <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                </div>
+                <div>
+                    <div class="text-3xl font-data font-bold tracking-widest text-white group-hover:text-amber-400 transition-colors" x-text="scanResult.summary.high">0</div>
+                    <div class="text-xs font-hud text-slate-400 tracking-wider">HIGH FINDINGS</div>
+                </div>
+            </div>
+            
+            <!-- Medium -->
+            <div class="hud-panel p-4 flex items-center gap-4 relative overflow-hidden group">
+                <div class="absolute right-0 top-0 h-full w-1 bg-yellow-400"></div>
+                <div class="w-12 h-12 rounded-full bg-yellow-950/50 border border-yellow-500/30 flex items-center justify-center" :class="{'text-yellow-400': scanResult.summary.medium > 0, 'text-slate-500': scanResult.summary.medium === 0}">
+                    <i class="fa-solid fa-exclamation text-xl"></i>
+                </div>
+                <div>
+                    <div class="text-3xl font-data font-bold tracking-widest text-white group-hover:text-yellow-400 transition-colors" x-text="scanResult.summary.medium">0</div>
+                    <div class="text-xs font-hud text-slate-400 tracking-wider">MEDIUM FINDINGS</div>
+                </div>
+            </div>
+
+            <!-- Low/Info -->
+            <div class="hud-panel p-4 flex items-center gap-4 relative overflow-hidden group">
+                <div class="absolute right-0 top-0 h-full w-1 bg-slate-500"></div>
+                <div class="w-12 h-12 rounded-full bg-slate-800/50 border border-slate-600/30 flex items-center justify-center" :class="{'text-blue-400': (scanResult.summary.low + scanResult.summary.info) > 0, 'text-slate-500': (scanResult.summary.low + scanResult.summary.info) === 0}">
+                    <i class="fa-solid fa-info text-xl"></i>
+                </div>
+                <div>
+                    <div class="text-3xl font-data font-bold tracking-widest text-white transition-colors" x-text="scanResult.summary.low + scanResult.summary.info">0</div>
+                    <div class="text-xs font-hud text-slate-400 tracking-wider">LOW / INFO</div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Scan Results Modules -->
+    <template x-if="scanResult">
+        <div class="grid grid-cols-1 gap-4">
+            <h2 class="text-lg font-hud text-cyber-cyan tracking-widest border-b border-cyber-border pb-2 mt-4"><i class="fa-solid fa-microscope mr-2"></i> Detection Modules</h2>
+            
+            <template x-for="(moduleData, moduleName) in scanResult.modules" :key="moduleName">
+                <div class="hud-panel overflow-hidden border border-cyber-border hover:border-cyber-cyan/30 transition-all">
+                    <!-- Module Header (Clickable) -->
+                    <div class="p-4 cursor-pointer flex justify-between items-center hover:bg-cyber-surface/80" @click="toggleModule(moduleName)">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded bg-slate-900 border border-slate-700 flex items-center justify-center text-slate-400 shadow-inner">
+                                <i class="fa-solid text-lg" :class="getModuleIcon(moduleName)"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-hud font-bold text-white tracking-widest text-sm flex items-center gap-2">
+                                    <span x-text="getModuleTitle(moduleName)"></span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 border border-slate-600 text-slate-300 ml-2" x-text="getModuleMitre(moduleName)" x-show="getModuleMitre(moduleName)"></span>
+                                </h3>
+                                <p class="text-xs font-data text-slate-400 mt-1" x-text="moduleData.description || 'Detection module analysis results'"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center gap-4">
+                            <!-- Status Badge -->
+                            <template x-if="moduleData.status === 'error'">
+                                <span class="px-3 py-1 rounded text-xs font-hud font-bold tracking-wider bg-slate-800 border border-slate-600 text-slate-400">ERROR</span>
+                            </template>
+                            <template x-if="moduleData.status === 'unsupported'">
+                                <span class="px-3 py-1 rounded text-xs font-hud font-bold tracking-wider bg-slate-800 border border-slate-600 text-slate-400">UNSUPPORTED</span>
+                            </template>
+                            <template x-if="moduleData.status === 'completed' && (!moduleData.findings || moduleData.findings.length === 0)">
+                                <span class="px-3 py-1 rounded text-xs font-hud font-bold tracking-wider bg-green-950/40 border border-cyber-green text-cyber-green shadow-[0_0_10px_rgba(0,255,157,0.2)]">CLEAR</span>
+                            </template>
+                            <template x-if="moduleData.status === 'completed' && moduleData.findings && moduleData.findings.length > 0">
+                                <span class="px-3 py-1 rounded text-xs font-hud font-bold tracking-wider bg-red-950/60 border border-cyber-red text-cyber-red animate-pulse shadow-[0_0_15px_rgba(255,42,95,0.4)]">THREATS DETECTED: <span x-text="moduleData.findings.length"></span></span>
+                            </template>
+                            
+                            <i class="fa-solid fa-chevron-down text-slate-500 transition-transform duration-300" :class="{'rotate-180': isExpanded(moduleName)}"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- Expandable Content -->
+                    <div x-show="isExpanded(moduleName)" x-transition class="border-t border-cyber-border bg-black/40">
+                        <template x-if="!moduleData.findings || moduleData.findings.length === 0">
+                            <div class="p-6 text-center text-slate-500 font-data text-sm">
+                                <i class="fa-solid fa-check-circle text-cyber-green/50 text-2xl mb-2"></i>
+                                <p>No threats detected by this module.</p>
+                                <template x-if="moduleData.status === 'unsupported'">
+                                    <p class="mt-2 text-xs text-amber-500/70">Module not supported on this platform or configuration.</p>
+                                </template>
+                            </div>
+                        </template>
+                        
+                        <template x-if="moduleData.findings && moduleData.findings.length > 0">
+                            <div class="p-4 space-y-4">
+                                <template x-for="(finding, idx) in moduleData.findings" :key="idx">
+                                    <div class="bg-cyber-surface border border-slate-700/50 rounded p-4 shadow-sm">
+                                        <div class="flex justify-between items-start mb-3">
+                                            <div class="flex items-center gap-3">
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold font-hud tracking-wider uppercase border" :class="getSeverityClass(finding.severity)" x-text="finding.severity"></span>
+                                                <h4 class="font-hud text-white text-sm tracking-wider" x-text="finding.finding_type || 'Suspicious Activity'"></h4>
+                                            </div>
+                                            <template x-if="finding.mitre_technique">
+                                                <span class="text-xs font-data text-slate-400 bg-slate-900 px-2 py-1 rounded border border-slate-800" x-text="finding.mitre_technique"></span>
+                                            </template>
+                                        </div>
+                                        
+                                        <p class="text-sm font-sans text-slate-300 mb-4" x-text="finding.description"></p>
+                                        
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-data mb-3">
+                                            <template x-if="finding.process_name || finding.pid">
+                                                <div class="bg-slate-900/80 border border-slate-700 p-2 rounded">
+                                                    <span class="text-slate-500 block mb-1">Target Process:</span>
+                                                    <span class="text-cyber-cyan" x-text="(finding.process_name || 'Unknown') + (finding.pid ? ' (PID: ' + finding.pid + ')' : '')"></span>
+                                                </div>
+                                            </template>
+                                            
+                                            <template x-if="finding.evidence">
+                                                <div class="bg-slate-900/80 border border-slate-700 p-2 rounded md:col-span-2 overflow-x-auto">
+                                                    <span class="text-slate-500 block mb-1">Evidence:</span>
+                                                    <pre class="text-amber-400/80 text-[10px] whitespace-pre-wrap" x-text="typeof finding.evidence === 'object' ? JSON.stringify(finding.evidence, null, 2) : finding.evidence"></pre>
+                                                </div>
+                                            </template>
+                                        </div>
+                                        
+                                        <template x-if="finding.remediation">
+                                            <div class="mt-3 bg-blue-950/20 border border-blue-900/40 p-3 rounded flex gap-3">
+                                                <i class="fa-solid fa-wrench text-blue-400 mt-0.5"></i>
+                                                <div>
+                                                    <span class="text-[10px] font-hud text-blue-400 tracking-wider block mb-1">REMEDIATION</span>
+                                                    <p class="text-xs text-blue-200/80 font-sans" x-text="finding.remediation"></p>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </template>
+
+    <!-- Scan History Table -->
+    <div class="hud-panel border border-cyber-border mt-auto flex-grow flex flex-col min-h-[300px]">
+        <div class="p-4 border-b border-cyber-border flex justify-between items-center bg-cyber-dark">
+            <h2 class="text-sm font-hud text-white tracking-widest"><i class="fa-solid fa-clock-rotate-left mr-2 text-slate-400"></i> SCAN HISTORY</h2>
+            <button @click="loadHistory()" class="text-xs text-cyber-cyan hover:text-white transition-colors">
+                <i class="fa-solid fa-rotate-right" :class="{'fa-spin': scanning}"></i> REFRESH
+            </button>
+        </div>
+        
+        <div class="overflow-x-auto flex-grow">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-cyber-surface text-xs font-hud text-slate-400 tracking-wider border-b border-cyber-border">
+                        <th class="p-3 font-normal">DATE</th>
+                        <th class="p-3 font-normal">SCAN ID</th>
+                        <th class="p-3 font-normal">TYPE</th>
+                        <th class="p-3 font-normal">FINDINGS</th>
+                        <th class="p-3 font-normal text-right">ACTIONS</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm font-data">
+                    <template x-if="scanHistory.length === 0">
+                        <tr>
+                            <td colspan="5" class="p-8 text-center text-slate-500">
+                                <i class="fa-solid fa-database text-2xl mb-2 opacity-50"></i>
+                                <p>No scan history available.</p>
+                            </td>
+                        </tr>
+                    </template>
+                    
+                    <template x-for="scan in scanHistory" :key="scan.id">
+                        <tr class="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
+                            <td class="p-3 text-slate-300" x-text="new Date(scan.created_at).toLocaleString()"></td>
+                            <td class="p-3 text-cyber-cyan"><span class="font-mono text-xs" x-text="scan.id.substring(0,8)"></span></td>
+                            <td class="p-3">
+                                <span class="px-2 py-0.5 rounded text-[10px] uppercase font-hud bg-slate-800 border border-slate-600 text-slate-300" x-text="scan.scan_type"></span>
+                            </td>
+                            <td class="p-3">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full" :class="scan.summary.critical > 0 ? 'bg-cyber-red animate-pulse' : (scan.summary.high > 0 ? 'bg-amber-500' : 'bg-slate-600')"></span>
+                                    <span :class="scan.summary.critical > 0 ? 'text-cyber-red font-bold' : 'text-slate-400'" x-text="scan.summary.total + ' total'"></span>
+                                </div>
+                            </td>
+                            <td class="p-3 text-right">
+                                <button @click="viewScan(scan.id)" class="px-3 py-1 bg-slate-800 hover:bg-cyber-cyan/20 border border-slate-700 hover:border-cyber-cyan text-xs text-slate-300 hover:text-cyber-cyan rounded transition-colors font-hud">
+                                    VIEW
+                                </button>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Binary Scan Modal -->
+    <div x-show="showBinaryModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" x-transition style="display: none;">
+        <div class="hud-panel w-full max-w-md border border-purple-500/30 shadow-[0_0_30px_rgba(168,85,247,0.15)] bg-cyber-dark" @click.away="showBinaryModal = false">
+            <div class="p-4 border-b border-purple-900/50 bg-purple-950/20 flex justify-between items-center">
+                <h3 class="font-hud font-bold text-purple-400 tracking-widest"><i class="fa-solid fa-file-code mr-2"></i> SCAN BINARY</h3>
+                <button @click="showBinaryModal = false" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6">
+                <p class="text-sm font-sans text-slate-300 mb-4">Enter absolute path to the executable or DLL for static and dynamic analysis.</p>
+                <div class="mb-4">
+                    <label class="block text-xs font-hud text-slate-400 mb-2 tracking-wider">FILE PATH</label>
+                    <input type="text" x-model="binaryPath" class="w-full bg-slate-900 border border-slate-700 text-white text-sm font-data p-2 rounded focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500" placeholder="C:\path\to\suspicious.exe">
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button @click="showBinaryModal = false" class="px-4 py-2 rounded text-xs font-hud bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors">CANCEL</button>
+                    <button @click="runBinaryScan()" class="px-4 py-2 rounded text-xs font-hud font-bold tracking-wider bg-purple-950/60 border border-purple-500 text-purple-300 hover:bg-purple-600 hover:text-white transition-all shadow-[0_0_10px_rgba(168,85,247,0.3)] disabled:opacity-50" :disabled="!binaryPath">SCAN</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Process Scan Modal -->
+    <div x-show="showProcessModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" x-transition style="display: none;">
+        <div class="hud-panel w-full max-w-md border border-amber-500/30 shadow-[0_0_30px_rgba(245,158,11,0.15)] bg-cyber-dark" @click.away="showProcessModal = false">
+            <div class="p-4 border-b border-amber-900/50 bg-amber-950/20 flex justify-between items-center">
+                <h3 class="font-hud font-bold text-amber-500 tracking-widest"><i class="fa-solid fa-microchip mr-2"></i> SCAN PROCESS</h3>
+                <button @click="showProcessModal = false" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6">
+                <p class="text-sm font-sans text-slate-300 mb-4">Enter Process ID (PID) to scan memory for injected code, hooks, and anomalies.</p>
+                <div class="mb-4">
+                    <label class="block text-xs font-hud text-slate-400 mb-2 tracking-wider">PROCESS ID</label>
+                    <input type="number" x-model="processPid" class="w-full bg-slate-900 border border-slate-700 text-white text-sm font-data p-2 rounded focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" placeholder="e.g. 1337">
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button @click="showProcessModal = false" class="px-4 py-2 rounded text-xs font-hud bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors">CANCEL</button>
+                    <button @click="runProcessScan()" class="px-4 py-2 rounded text-xs font-hud font-bold tracking-wider bg-amber-950/60 border border-amber-500 text-amber-500 hover:bg-amber-600 hover:text-white transition-all shadow-[0_0_10px_rgba(245,158,11,0.3)] disabled:opacity-50" :disabled="!processPid">SCAN</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function securityScanner() {
+    return {
+        scanResult: null,
+        scanHistory: [],
+        scanning: false,
+        scanType: '', 
+        showBinaryModal: false,
+        showProcessModal: false,
+        binaryPath: '',
+        processPid: '',
+        expandedModules: {},
+        
+        async init() {
+            await this.loadHistory();
+            // Pre-expand modules if we have a scan result later
+        },
+        
+        async runLiveScan() {
+            this.scanning = true;
+            this.scanType = 'live';
+            this.scanResult = null;
+            
+            try {
+                // MOCK API CALL - Replace with real endpoint
+                const res = await fetch('/api/v1/security/scan/live', { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'} 
+                });
+                
+                if (res.ok) {
+                    this.scanResult = await res.json();
+                    await this.loadHistory();
+                    this.notifySuccess('Live scan completed successfully');
+                } else {
+                    this.notifyError('Scan failed to initialize');
+                }
+            } catch(e) { 
+                console.error(e);
+                this.notifyError('Network error during scan');
+            } finally { 
+                this.scanning = false; 
+                this.scanType = ''; 
+            }
+        },
+        
+        async runBinaryScan() {
+            if (!this.binaryPath) return;
+            this.showBinaryModal = false;
+            this.scanning = true;
+            this.scanType = 'binary';
+            this.scanResult = null;
+            
+            try {
+                const res = await fetch('/api/v1/security/scan/binary', { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ target_path: this.binaryPath })
+                });
+                
+                if (res.ok) {
+                    this.scanResult = await res.json();
+                    await this.loadHistory();
+                    this.notifySuccess(`Scanned ${this.binaryPath}`);
+                    this.binaryPath = '';
+                } else {
+                    this.notifyError('Binary scan failed');
+                }
+            } catch(e) { 
+                this.notifyError('Error executing scan');
+            } finally { 
+                this.scanning = false; 
+                this.scanType = ''; 
+            }
+        },
+        
+        async runProcessScan() {
+            if (!this.processPid) return;
+            this.showProcessModal = false;
+            this.scanning = true;
+            this.scanType = 'process';
+            this.scanResult = null;
+            
+            try {
+                const res = await fetch('/api/v1/security/scan/process', { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ pid: parseInt(this.processPid) })
+                });
+                
+                if (res.ok) {
+                    this.scanResult = await res.json();
+                    await this.loadHistory();
+                    this.notifySuccess(`Scanned PID ${this.processPid}`);
+                    this.processPid = '';
+                } else {
+                    this.notifyError('Process scan failed');
+                }
+            } catch(e) { 
+                this.notifyError('Error executing scan');
+            } finally { 
+                this.scanning = false; 
+                this.scanType = ''; 
+            }
+        },
+        
+        async loadHistory() {
+            try {
+                const res = await fetch('/api/v1/security/scan/results');
+                if (res.ok) {
+                    const data = await res.json();
+                    this.scanHistory = Array.isArray(data) ? data : (data.items || []);
+                }
+            } catch(e) {
+                console.error("Failed to load scan history", e);
+            }
+        },
+        
+        async viewScan(scanId) {
+            try {
+                const res = await fetch(`/api/v1/security/scan/results/${scanId}`);
+                if (res.ok) {
+                    this.scanResult = await res.json();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            } catch(e) {
+                this.notifyError('Failed to load scan details');
+            }
+        },
+        
+        toggleModule(name) { 
+            this.expandedModules[name] = !this.expandedModules[name]; 
+        },
+        
+        isExpanded(name) { 
+            return this.expandedModules[name] || false; 
+        },
+        
+        getSeverityClass(severity) {
+            const s = (severity || '').toLowerCase();
+            return {
+                'critical': 'bg-red-950 text-red-300 border-red-500/60 shadow-[0_0_8px_rgba(255,42,95,0.4)]',
+                'high': 'bg-amber-950 text-amber-300 border-amber-500/60 shadow-[0_0_8px_rgba(245,158,11,0.4)]',
+                'medium': 'bg-yellow-950 text-yellow-300 border-yellow-500/60 shadow-[0_0_8px_rgba(234,179,8,0.4)]',
+                'low': 'bg-blue-950 text-blue-300 border-blue-500/60',
+                'info': 'bg-slate-800 text-slate-300 border-slate-600'
+            }[s] || 'bg-slate-800 text-slate-300 border-slate-600';
+        },
+        
+        getModuleIcon(name) {
+            return {
+                'amsi_detector': 'fa-shield-virus',
+                'etw_detector': 'fa-eye-slash',
+                'api_hook_auditor': 'fa-link-slash',
+                'iat_scanner': 'fa-table-cells',
+                'packed_detector': 'fa-file-zipper'
+            }[name] || 'fa-shield';
+        },
+        
+        getModuleTitle(name) {
+            return {
+                'amsi_detector': 'AMSI BYPASS DETECTOR',
+                'etw_detector': 'ETW TAMPERING DETECTOR',
+                'api_hook_auditor': 'API HOOK AUDITOR',
+                'iat_scanner': 'IAT ANOMALY SCANNER',
+                'packed_detector': 'PACKED BINARY DETECTOR'
+            }[name] || name.toUpperCase().replace(/_/g, ' ');
+        },
+        
+        getModuleMitre(name) {
+            return { 
+                'amsi_detector': 'T1562.001', 
+                'etw_detector': 'T1562.006', 
+                'api_hook_auditor': 'T1055', 
+                'iat_scanner': 'T1055.001', 
+                'packed_detector': 'T1027.002' 
+            }[name] || '';
+        },
+        
+        notifySuccess(msg) {
+            // Check if global toast exists, otherwise console
+            if (window.showToast) {
+                window.showToast(msg, 'success');
+            } else {
+                console.log("SUCCESS:", msg);
+            }
+        },
+        
+        notifyError(msg) {
+            if (window.showToast) {
+                window.showToast(msg, 'error');
+            } else {
+                console.error("ERROR:", msg);
+            }
+        }
+    };
+}
+</script>
+{% endblock %}

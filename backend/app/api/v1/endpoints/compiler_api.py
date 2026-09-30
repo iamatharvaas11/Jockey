@@ -9,6 +9,8 @@ from app.models.investigation import Investigation
 from app.models.timeline_event import TimelineEvent
 from app.services.compiler_service import compile_script, execute_script
 from app.core.ws_manager import ws_manager
+from app.api.deps import get_current_user
+from app.models.user import User
 
 router = APIRouter()
 
@@ -16,7 +18,12 @@ class ScriptRequest(BaseModel):
     source: str
 
 @router.post("/investigations/{investigation_id}/compile")
-async def compile_jocky_script(investigation_id: str, req: ScriptRequest, db: AsyncSession = Depends(get_db)):
+async def compile_jocky_script(
+    investigation_id: str,
+    req: ScriptRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     # Verify investigation exists
     inv_result = await db.execute(select(Investigation).filter(Investigation.id == investigation_id))
     if not inv_result.scalars().first():
@@ -26,7 +33,12 @@ async def compile_jocky_script(investigation_id: str, req: ScriptRequest, db: As
     return result
 
 @router.post("/investigations/{investigation_id}/execute")
-async def execute_jocky_script(investigation_id: str, req: ScriptRequest, db: AsyncSession = Depends(get_db)):
+async def execute_jocky_script(
+    investigation_id: str,
+    req: ScriptRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     inv_result = await db.execute(select(Investigation).filter(Investigation.id == investigation_id))
     inv = inv_result.scalars().first()
     if not inv:
@@ -54,7 +66,11 @@ async def execute_jocky_script(investigation_id: str, req: ScriptRequest, db: As
     return exec_result
 
 @router.get("/investigations/{investigation_id}/report")
-async def generate_report(investigation_id: str, db: AsyncSession = Depends(get_db)):
+async def generate_report(
+    investigation_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     inv_result = await db.execute(select(Investigation).filter(Investigation.id == investigation_id))
     inv = inv_result.scalars().first()
     if not inv:
@@ -74,7 +90,8 @@ async def generate_report(investigation_id: str, db: AsyncSession = Depends(get_
 async def export_investigation_report(
     investigation_id: str, 
     format: str = "html", 
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     from fastapi.responses import Response
     import os, tempfile, json
@@ -85,20 +102,11 @@ async def export_investigation_report(
     if not inv:
         raise HTTPException(status_code=404, detail="Investigation not found")
         
-    t_result = await db.execute(select(TimelineEvent).filter(TimelineEvent.investigation_id == investigation_id))
-    events = t_result.scalars().all()
-    tline = [{
-        "timestamp": ev.timestamp.isoformat() if ev.timestamp else "",
-        "severity": ev.severity or "INFO",
-        "title": ev.title or "Event",
-        "description": ev.description or ""
-    } for ev in events]
-    
-    generator = ReportGenerator(case_id=inv.case_number, examiner="Admin User")
-    rep_data = generator.generate(
-        timeline=tline,
-        correlations={"status": inv.status, "severity": inv.severity}
-    )
+    from app.services.report_assembly import assemble_investigation_report_data
+    rep_data = await assemble_investigation_report_data(db, investigation_id, examiner=current_user.email or "Admin User")
+    generator = ReportGenerator(case_id=inv.case_number, examiner=current_user.email or "Admin User")
+    if not rep_data:
+        rep_data = generator.generate()
     
     if format.lower() == "json":
         return Response(
@@ -118,10 +126,16 @@ async def export_investigation_report(
         )
 
 @router.post("/compiler/compile")
-async def compile_standalone_script(req: ScriptRequest):
+async def compile_standalone_script(
+    req: ScriptRequest,
+    current_user: User = Depends(get_current_user)
+):
     return compile_script(req.source)
 
 @router.post("/compiler/execute")
-async def execute_standalone_script(req: ScriptRequest):
+async def execute_standalone_script(
+    req: ScriptRequest,
+    current_user: User = Depends(get_current_user)
+):
     return execute_script(req.source)
 

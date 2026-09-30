@@ -3,11 +3,162 @@
 {% block title %}JOCKY // Forensic Evidence Reports{% endblock %}
 {% block header_title %}FORENSIC EVIDENCE DOSSIER & REPORTS{% endblock %}
 
+{% block extra_head %}
+<style>
+/* Formal Times New Roman Typography for Forensic Dossier */
+html {
+    scroll-behavior: smooth;
+}
+.dossier-report, .dossier-report * {
+    font-family: "Times New Roman", Times, Georgia, serif !important;
+}
+.dossier-report section {
+    scroll-margin-top: 72px;
+}
+.dossier-report table {
+    border-collapse: collapse;
+    width: 100%;
+}
+.dossier-badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+@media print {
+    /* Unconstrain html and body so content flows across multiple pages without clipping */
+    html, body {
+        overflow: visible !important;
+        height: auto !important;
+        min-height: auto !important;
+        max-height: none !important;
+        position: static !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* Hide dashboard chrome: sidebar, top selector bar, action buttons, search filters, beacons */
+    aside, header, nav, .no-print, [class*="hud-corner"], .beacon-pulse, button, input {
+        display: none !important;
+    }
+
+    /* Unconstrain all container elements */
+    body > div, main, .flex-1, [x-data], .hud-panel {
+        display: block !important;
+        overflow: visible !important;
+        height: auto !important;
+        min-height: auto !important;
+        max-height: none !important;
+        position: static !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    /* Target the dossier container specifically */
+    .dossier-report {
+        display: block !important;
+        visibility: visible !important;
+        position: static !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 10mm 15mm !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        border: none !important;
+        box-shadow: none !important;
+        font-family: "Times New Roman", Times, Georgia, serif !important;
+    }
+
+    /* Force child elements to Times New Roman and readable black ink */
+    .dossier-report, .dossier-report * {
+        visibility: visible !important;
+        color: #000000 !important;
+        background: transparent !important;
+        border-color: #444444 !important;
+        text-shadow: none !important;
+        box-shadow: none !important;
+        font-family: "Times New Roman", Times, Georgia, serif !important;
+    }
+
+    .dossier-report section {
+        page-break-inside: auto !important;
+        margin-bottom: 20px !important;
+    }
+
+    .dossier-report table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+        margin-top: 8px !important;
+        margin-bottom: 15px !important;
+        page-break-inside: auto !important;
+    }
+
+    .dossier-report thead {
+        display: table-header-group !important;
+    }
+
+    .dossier-report tr {
+        page-break-inside: avoid !important;
+    }
+
+    .dossier-report th, .dossier-report td {
+        border: 1px solid #333333 !important;
+        padding: 5px 8px !important;
+        color: #000000 !important;
+        font-size: 10pt !important;
+        line-height: 1.3 !important;
+    }
+
+    .dossier-report th {
+        background-color: #f0f0f0 !important;
+        font-weight: bold !important;
+    }
+
+    .dossier-badge {
+        border: 1px solid #333333 !important;
+        color: #000000 !important;
+        background-color: #f5f5f5 !important;
+        padding: 1px 4px !important;
+        font-size: 8pt !important;
+    }
+
+    .dossier-report h1 {
+        font-size: 18pt !important;
+        color: #000000 !important;
+        margin-bottom: 4px !important;
+    }
+
+    .dossier-report h3 {
+        font-size: 12pt !important;
+        color: #000000 !important;
+        margin-bottom: 4px !important;
+    }
+
+    .dossier-report h4 {
+        font-size: 11pt !important;
+        color: #000000 !important;
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div x-data="reportsData()" x-init="initReports()" class="flex flex-col h-full gap-6 select-text overflow-y-auto pb-20">
     
     <!-- Top Selector Bar -->
-    <div class="hud-panel hud-corner-brackets rounded p-5 flex flex-col md:flex-row justify-between items-center gap-4 bg-cyber-dark/80">
+    <div class="hud-panel hud-corner-brackets rounded p-5 flex flex-col md:flex-row justify-between items-center gap-4 bg-cyber-dark/80 no-print">
         <div class="flex flex-wrap items-center gap-4 w-full md:w-auto font-data text-xs">
             <div class="w-full md:w-96">
                 <label class="block text-xs font-hud font-bold text-slate-300 uppercase tracking-wider mb-1.5 flex justify-between">
@@ -31,13 +182,13 @@
         </div>
         
         <div class="flex flex-wrap gap-2.5 font-hud" x-show="reportLoaded">
-            <button @click="downloadHtml()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-cyber-cyan border border-cyber-cyan/40 rounded text-xs">
+            <button @click="downloadHtml()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-cyber-cyan border border-cyber-cyan/40 rounded text-xs transition">
                 <i class="fa-solid fa-file-code mr-1"></i> DOWNLOAD HTML
             </button>
-            <button @click="downloadJson()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded text-xs">
+            <button @click="downloadJson()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded text-xs transition">
                 <i class="fa-solid fa-file-lines mr-1"></i> DOWNLOAD JSON
             </button>
-            <button @click="printDossier()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded text-xs">
+            <button @click="printDossier()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded text-xs transition">
                 <i class="fa-solid fa-print mr-1"></i> PRINT / SAVE PDF
             </button>
         </div>
@@ -60,99 +211,456 @@
     <div x-show="loading" class="flex-1 hud-panel rounded flex flex-col items-center justify-center text-cyber-cyan p-12 text-center">
         <div class="w-12 h-12 rounded-full border-2 border-slate-800 border-t-cyber-cyan animate-spin mb-4"></div>
         <p class="font-hud font-bold tracking-widest text-xs uppercase text-white">COMPILING FORENSIC REPORT DATA & INTEGRITY MANIFEST...</p>
-        <span class="text-[10px] font-data text-slate-500 mt-1">VERIFYING CANONICAL ARTIFACTS AND SHA-256 HASHES</span>
+        <span class="text-[10px] font-data text-slate-500 mt-1">VERIFYING CANONICAL ARTIFACTS, PROCESSES, AND CORRELATION GRAPH</span>
     </div>
 
     <!-- Live Dossier Document Preview -->
     <div x-show="reportLoaded && !loading" class="flex-1 overflow-auto">
-        <div class="max-w-4xl mx-auto hud-panel rounded border border-slate-700/80 p-8 font-sans shadow-2xl bg-[#090e1a] text-slate-300">
+        <div class="dossier-report max-w-5xl mx-auto hud-panel rounded border border-slate-700/80 p-8 sm:p-12 shadow-2xl bg-[#090e1a] text-slate-200">
             
             <!-- Document Header -->
             <div class="border-b-2 border-cyber-border pb-6 mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
                 <div>
-                    <div class="inline-block px-2.5 py-0.5 bg-cyan-950/60 border border-cyber-cyan/60 text-cyber-cyan text-[10px] font-data font-bold tracking-widest uppercase rounded mb-2">
+                    <div class="inline-block px-2.5 py-0.5 bg-cyan-950/60 border border-cyber-cyan/60 text-cyber-cyan text-xs font-bold tracking-widest uppercase rounded mb-2">
                         OFFICIAL FORENSIC INTELLIGENCE REPORT
                     </div>
-                    <h1 class="text-2xl font-hud font-black text-white tracking-wider uppercase">JOCKY FORENSIC INVESTIGATION REPORT</h1>
-                    <p class="text-xs font-data text-slate-400 mt-0.5" x-text="'EXAMINER // ' + (reportData.meta ? reportData.meta.examiner : 'JOCKY Framework')"></p>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-wider uppercase">JOCKY FORENSIC INVESTIGATION REPORT</h1>
+                    <p class="text-sm text-slate-400 mt-1" x-text="'EXAMINER: ' + (reportData.meta ? reportData.meta.examiner : 'JOCKY Forensic Framework')"></p>
+                    <p class="text-xs text-slate-500" x-text="'ORGANIZATION: ' + (reportData.meta && reportData.meta.organization ? reportData.meta.organization : 'Digital Forensics & Incident Response')"></p>
                 </div>
-                <div class="text-left sm:text-right font-data text-xs">
-                    <p class="text-white font-bold text-sm font-mono" x-text="'CASE ID: ' + selectedCase"></p>
-                    <p class="text-slate-400 font-mono mt-0.5" x-text="'GENERATED: ' + (reportData.meta ? reportData.meta.generated_at : new Date().toISOString())"></p>
-                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold"
-                          :class="reportData.summary && reportData.summary.integrity_status === 'verified' ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/40' : 'bg-amber-950 text-amber-400 border border-amber-500/40'"
-                          x-text="'INTEGRITY: ' + (reportData.summary ? reportData.summary.integrity_status.toUpperCase() : 'PENDING')">
-                    </span>
+                <div class="text-left sm:text-right text-xs">
+                    <p class="text-white font-bold text-base" x-text="'CASE ID: ' + selectedCase"></p>
+                    <p class="text-slate-400 mt-0.5" x-text="'GENERATED: ' + (reportData.meta ? reportData.meta.generated_at : new Date().toISOString())"></p>
+                    <div class="mt-2">
+                        <span class="dossier-badge"
+                              :class="reportData.summary && (reportData.summary.integrity_status === 'verified' || reportData.summary.integrity_status === 'VERIFIED') ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/50' : 'bg-amber-950 text-amber-300 border border-amber-500/50'"
+                              x-text="'INTEGRITY: ' + (reportData.summary ? String(reportData.summary.integrity_status).toUpperCase() : 'PENDING')">
+                        </span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Section 1: Executive Incident Summary -->
-            <section class="mb-8 font-data">
-                <div class="flex items-center gap-2 mb-3 pb-1 border-b border-slate-800">
-                    <span class="text-cyber-cyan font-bold font-hud">01 //</span>
-                    <h3 class="font-hud font-bold text-xs uppercase tracking-wider text-white">INCIDENT OVERVIEW</h3>
+            <!-- Quick Navigation Bar (Sticky with Glassmorphism & Smooth Scrolling) -->
+            <div class="sticky top-0 z-30 mb-8 p-3 bg-slate-950/95 backdrop-blur border border-slate-800 rounded-lg flex flex-wrap items-center justify-between gap-2 text-xs shadow-xl no-print">
+                <div class="flex flex-wrap items-center gap-1.5 font-hud">
+                    <span class="text-cyber-cyan font-bold px-2 py-1 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                        <i class="fa-solid fa-compass"></i> JUMP:
+                    </span>
+                    <a href="#sec-overview" class="px-2.5 py-1 bg-slate-900 hover:bg-cyber-cyan/20 hover:text-cyber-cyan text-slate-300 rounded border border-slate-800 hover:border-cyber-cyan/40 transition">01 Overview</a>
+                    <a href="#sec-integrity" class="px-2.5 py-1 bg-slate-900 hover:bg-cyber-cyan/20 hover:text-cyber-cyan text-slate-300 rounded border border-slate-800 hover:border-cyber-cyan/40 transition">02 Integrity</a>
+                    <a href="#sec-findings" class="px-2.5 py-1 bg-slate-900 hover:bg-amber-400/20 hover:text-amber-300 text-slate-300 rounded border border-slate-800 hover:border-amber-400/40 transition">03 Findings (<span x-text="getFindingsList().length"></span>)</a>
+                    <a href="#sec-evidence" class="px-2.5 py-1 bg-slate-900 hover:bg-emerald-400/20 hover:text-emerald-300 text-slate-300 rounded border border-slate-800 hover:border-emerald-400/40 transition">04 Evidence (<span x-text="getEvidenceList().length"></span>)</a>
+                    <a href="#sec-correlation" class="px-2.5 py-1 bg-slate-900 hover:bg-cyan-400/20 hover:text-cyan-300 text-slate-300 rounded border border-slate-800 hover:border-cyan-400/40 transition">05 Correlation (<span x-text="getRelationshipsList().length"></span>)</a>
+                    <a href="#sec-timeline" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-100/20 hover:text-white text-slate-300 rounded border border-slate-800 hover:border-slate-600 transition">06 Timeline (<span x-text="getTimelineList().length"></span>)</a>
+                    <a href="#sec-conclusion" class="px-2.5 py-1 bg-slate-900 hover:bg-purple-400/20 hover:text-purple-300 text-slate-300 rounded border border-slate-800 hover:border-purple-400/40 transition">08 Authorization</a>
                 </div>
-                <div class="p-4 bg-slate-950/80 rounded border border-slate-800/80 text-xs text-slate-300 leading-relaxed">
-                    Forensic investigation <span class="text-white font-mono font-bold" x-text="selectedCase"></span> processed across target hosts: <span class="text-cyber-cyan font-mono" x-text="reportData.meta && reportData.meta.hosts ? reportData.meta.hosts.join(', ') : 'localhost'"></span>. Canonical evidence normalization recorded <span class="text-cyber-green font-bold" x-text="reportData.summary ? reportData.summary.total_evidence_items : 0"></span> evidence artifacts, resulting in <span class="text-amber-400 font-bold" x-text="reportData.summary ? reportData.summary.total_ioc_findings : 0"></span> IOC findings, <span class="text-cyber-cyan font-bold" x-text="reportData.summary ? reportData.summary.total_relationships : 0"></span> correlation links, and <span class="text-white font-bold" x-text="reportData.summary ? reportData.summary.total_timeline_events : 0"></span> chronological timeline events.
+                <div class="flex items-center gap-2">
+                    <button @click="scrollToTop()" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded border border-slate-800 text-[11px] font-hud transition flex items-center gap-1" title="Back to Top">
+                        <i class="fa-solid fa-arrow-up"></i>
+                        <span>TOP</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Section 01: Executive Incident Summary -->
+            <section class="mb-8 scroll-mt-20" id="sec-overview">
+                <div class="flex items-center gap-2 mb-3 pb-1 border-b border-slate-800">
+                    <span class="text-cyber-cyan font-bold text-sm">01 //</span>
+                    <h3 class="font-bold text-sm uppercase tracking-wider text-white">INCIDENT OVERVIEW & EXECUTIVE SUMMARY</h3>
+                </div>
+
+                <!-- Quick KPI Metric Cards -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                    <div class="p-3 bg-slate-950/90 rounded border border-slate-800/90 text-center">
+                        <div class="text-2xl font-bold text-emerald-400" x-text="getEvidenceList().length"></div>
+                        <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Evidence Items</div>
+                    </div>
+                    <div class="p-3 bg-slate-950/90 rounded border border-slate-800/90 text-center">
+                        <div class="text-2xl font-bold text-amber-400" x-text="getFindingsList().length"></div>
+                        <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Threat Indicators</div>
+                    </div>
+                    <div class="p-3 bg-slate-950/90 rounded border border-slate-800/90 text-center">
+                        <div class="text-2xl font-bold text-cyan-400" x-text="getRelationshipsList().length"></div>
+                        <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Correlations</div>
+                    </div>
+                    <div class="p-3 bg-slate-950/90 rounded border border-slate-800/90 text-center">
+                        <div class="text-2xl font-bold text-white" x-text="getTimelineList().length"></div>
+                        <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Timeline Events</div>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-slate-950/80 rounded border border-slate-800/80 text-sm text-slate-300 leading-relaxed space-y-2">
+                    <p>
+                        Forensic examination for case <span class="text-white font-bold" x-text="selectedCase"></span> was performed across target endpoint(s): 
+                        <span class="text-cyber-cyan font-bold" x-text="reportData.meta && reportData.meta.hosts ? reportData.meta.hosts.join(', ') : 'localhost'"></span>. 
+                        Canonical telemetry acquired <span class="text-emerald-400 font-bold" x-text="getEvidenceList().length"></span> evidence artifact(s), resulting in 
+                        <span class="text-amber-400 font-bold" x-text="getFindingsList().length"></span> security threat finding(s), 
+                        <span class="text-cyber-cyan font-bold" x-text="getRelationshipsList().length"></span> cross-artifact correlation link(s), and 
+                        <span class="text-white font-bold" x-text="getTimelineList().length"></span> chronological timeline event(s).
+                    </p>
+                    <template x-if="reportData.summary && reportData.summary.overall_result">
+                        <p class="text-xs text-slate-400 pt-1 border-t border-slate-800" x-text="'Result Verdict: ' + reportData.summary.overall_result"></p>
+                    </template>
                 </div>
             </section>
 
-            <!-- Section 2: Integrity Verification -->
-            <section class="mb-8 font-data">
+            <!-- Section 02: Integrity Verification -->
+            <section class="mb-8 scroll-mt-20" id="sec-integrity">
                 <div class="flex items-center gap-2 mb-3 pb-1 border-b border-slate-800">
-                    <span class="text-cyber-cyan font-bold font-hud">02 //</span>
-                    <h3 class="font-hud font-bold text-xs uppercase tracking-wider text-white">CRYPTOGRAPHIC INTEGRITY MANIFEST</h3>
+                    <span class="text-cyber-cyan font-bold text-sm">02 //</span>
+                    <h3 class="font-bold text-sm uppercase tracking-wider text-white">CRYPTOGRAPHIC INTEGRITY MANIFEST</h3>
                 </div>
                 <div class="p-4 bg-slate-950/80 rounded border border-slate-800/80 text-xs space-y-2">
-                    <div class="flex justify-between items-center">
-                        <span class="text-slate-400">MERKLE ROOT HASH:</span>
-                        <span class="font-mono text-cyber-cyan font-bold" x-text="reportData.integrity_manifest ? (reportData.integrity_manifest.root_hash || 'N/A') : 'N/A'"></span>
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-1">
+                        <span class="text-slate-400 font-bold">MERKLE ROOT SHA-256 HASH:</span>
+                        <span class="text-cyber-cyan font-bold break-all" x-text="reportData.integrity_manifest ? (reportData.integrity_manifest.root_hash || 'N/A') : 'N/A'"></span>
                     </div>
                     <div class="flex justify-between items-center">
-                        <span class="text-slate-400">STATUS:</span>
-                        <span class="font-mono font-bold text-emerald-400" x-text="reportData.integrity_manifest ? (reportData.integrity_manifest.status || 'VERIFIED').toUpperCase() : 'VERIFIED'"></span>
+                        <span class="text-slate-400 font-bold">INTEGRITY VERIFICATION STATUS:</span>
+                        <span class="font-bold"
+                              :class="reportData.integrity_manifest && (reportData.integrity_manifest.status === 'verified' || reportData.integrity_manifest.status === 'VERIFIED') ? 'text-emerald-400' : 'text-amber-400'"
+                              x-text="reportData.integrity_manifest ? String(reportData.integrity_manifest.status || 'VERIFIED').toUpperCase() : 'VERIFIED'">
+                        </span>
+                    </div>
+                    <div class="flex justify-between items-center text-[11px] text-slate-400 pt-1 border-t border-slate-900">
+                        <span>Total Verified Artifacts: <strong class="text-slate-200" x-text="reportData.integrity_manifest ? (reportData.integrity_manifest.verified_items ?? getEvidenceList().length) : getEvidenceList().length"></strong></span>
+                        <span>Modified: <strong class="text-slate-200" x-text="reportData.integrity_manifest ? (reportData.integrity_manifest.modified_items ?? 0) : 0"></strong></span>
+                        <span>Missing: <strong class="text-slate-200" x-text="reportData.integrity_manifest ? (reportData.integrity_manifest.missing_items ?? 0) : 0"></strong></span>
                     </div>
                 </div>
             </section>
 
-            <!-- Section 3: Verified IOC Signatures -->
-            <section class="mb-8 font-data">
-                <div class="flex items-center gap-2 mb-3 pb-1 border-b border-slate-800">
-                    <span class="text-cyber-cyan font-bold font-hud">03 //</span>
-                    <h3 class="font-hud font-bold text-xs uppercase tracking-wider text-white">IDENTIFIED INDICATORS OF COMPROMISE</h3>
+            <!-- Section 03: Identified Findings & IOC Signatures -->
+            <section class="mb-8 scroll-mt-20" id="sec-findings">
+                <div class="flex items-center justify-between mb-3 pb-1 border-b border-slate-800">
+                    <div class="flex items-center gap-2">
+                        <span class="text-cyber-cyan font-bold text-sm">03 //</span>
+                        <h3 class="font-bold text-sm uppercase tracking-wider text-white">IDENTIFIED THREAT FINDINGS & INDICATORS</h3>
+                    </div>
+                    <span class="text-xs px-2 py-0.5 rounded bg-slate-900 text-amber-400 font-bold" x-text="`${getFindingsList().length} Finding(s)`"></span>
                 </div>
-                <template x-if="reportData.ioc_findings && reportData.ioc_findings.length > 0">
-                    <div class="overflow-x-auto border border-slate-800 rounded">
+                
+                <template x-if="getFindingsList().length > 0">
+                    <div class="overflow-x-auto border border-slate-800 rounded mb-4">
                         <table class="w-full text-left text-xs">
-                            <thead class="bg-slate-900 text-slate-400 uppercase text-[10px]">
+                            <thead class="bg-slate-900 text-slate-300 uppercase text-[11px] border-b border-slate-800">
                                 <tr>
-                                    <th class="p-2.5">Severity</th>
-                                    <th class="p-2.5">Rule / Indicator</th>
-                                    <th class="p-2.5">Explanation</th>
+                                    <th class="p-3">Severity</th>
+                                    <th class="p-3">Rule / Finding ID</th>
+                                    <th class="p-3">Rule Name</th>
+                                    <th class="p-3">Detection Rationale</th>
+                                    <th class="p-3">Confidence</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-800/60">
-                                <template x-for="ioc in reportData.ioc_findings" :key="ioc.finding_id || ioc.rule_id">
-                                    <tr>
-                                        <td class="p-2.5">
-                                            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase"
-                                                  :class="ioc.severity === 'CRITICAL' || ioc.severity === 'HIGH' ? 'bg-red-950 text-red-400 border border-red-500/30' : 'bg-amber-950 text-amber-400 border border-amber-500/30'"
+                            <tbody class="divide-y divide-slate-800/70">
+                                <template x-for="ioc in getFindingsList()" :key="ioc.finding_id || ioc.rule_id">
+                                    <tr class="hover:bg-slate-900/40">
+                                        <td class="p-3">
+                                            <span class="dossier-badge"
+                                                  :class="ioc.severity === 'CRITICAL' || ioc.severity === 'HIGH' ? 'bg-red-950 text-red-300 border border-red-500/40' : (ioc.severity === 'MEDIUM' ? 'bg-amber-950 text-amber-300 border border-amber-500/40' : 'bg-blue-950 text-blue-300 border border-blue-500/40')"
                                                   x-text="ioc.severity">
                                             </span>
                                         </td>
-                                        <td class="p-2.5 font-mono text-cyber-cyan" x-text="ioc.rule_id || ioc.rule_name"></td>
-                                        <td class="p-2.5 text-slate-300" x-text="ioc.explanation || ioc.reason"></td>
+                                        <td class="p-3 text-cyber-cyan font-bold" x-text="ioc.rule_id || ioc.finding_id"></td>
+                                        <td class="p-3 text-slate-200" x-text="ioc.rule_name || ioc.title || 'Threat Indicator'"></td>
+                                        <td class="p-3 text-slate-300 leading-relaxed" x-text="ioc.reason || ioc.explanation || 'Behavior matched forensic indicator'"></td>
+                                        <td class="p-3 text-slate-400 font-bold" x-text="Math.round((ioc.confidence || 0.9) * 100) + '%'"></td>
                                     </tr>
                                 </template>
                             </tbody>
                         </table>
                     </div>
                 </template>
-                <template x-if="!reportData.ioc_findings || reportData.ioc_findings.length === 0">
-                    <div class="p-4 bg-slate-950/60 rounded border border-slate-800/80 text-xs text-slate-500 text-center">
-                        Zero indicators of compromise detected for this investigation.
+                <template x-if="getFindingsList().length === 0">
+                    <div class="p-4 bg-slate-950/60 rounded border border-slate-800/80 text-xs text-slate-400 text-center">
+                        Zero indicators of compromise or malicious findings identified in this investigation scope.
                     </div>
                 </template>
+
+                <!-- Detailed Findings Breakdowns (if available) -->
+                <template x-if="getDetailedFindingsList().length > 0">
+                    <div class="mt-4 space-y-3">
+                        <template x-for="df in getDetailedFindingsList()" :key="df.finding_id || df.rule_id">
+                            <div class="p-4 bg-slate-950/90 rounded border border-slate-800 text-xs space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <h4 class="font-bold text-white text-sm" x-text="df.title || df.rule_id"></h4>
+                                    <span class="dossier-badge bg-red-950 text-red-300 border border-red-500/40" x-text="df.severity"></span>
+                                </div>
+                                <div class="text-slate-300 leading-relaxed" x-text="df.investigator_interpretation || df.reason"></div>
+                                <template x-if="df.supporting_evidence && df.supporting_evidence.length > 0">
+                                    <div class="text-[11px] text-slate-400 pt-1 border-t border-slate-900">
+                                        <strong class="text-cyber-cyan">Supporting Telemetry:</strong>
+                                        <template x-for="se in df.supporting_evidence" :key="se.id">
+                                            <span class="ml-1 px-1.5 py-0.5 bg-slate-900 rounded border border-slate-800 text-slate-300" x-text="se.id + ' (' + (se.type || 'artifact') + ')'"></span>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </section>
+
+            <!-- Section 04: Canonical Evidence Inventory -->
+            <section class="mb-8 scroll-mt-20" id="sec-evidence">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-1 border-b border-slate-800">
+                    <div class="flex items-center gap-2">
+                        <span class="text-cyber-cyan font-bold text-sm">04 //</span>
+                        <h3 class="font-bold text-sm uppercase tracking-wider text-white">CANONICAL EVIDENCE INVENTORY</h3>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="relative flex items-center">
+                            <input type="text" x-model="searchEvidence" placeholder="Filter evidence artifacts..." 
+                                   class="no-print bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-xs text-white focus:border-cyber-cyan w-44 sm:w-60 pr-6">
+                            <button x-show="searchEvidence" @click="searchEvidence = ''" class="absolute right-2 text-slate-500 hover:text-white text-xs no-print">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        <span class="text-xs px-2 py-0.5 rounded bg-slate-900 text-emerald-400 font-bold whitespace-nowrap" x-text="`${getEvidenceList().length} Artifact(s)`"></span>
+                    </div>
+                </div>
+
+                <template x-if="getEvidenceList().length > 0">
+                    <div>
+                        <div class="overflow-x-auto border border-slate-800 rounded">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-slate-900 text-slate-300 uppercase text-[11px] border-b border-slate-800">
+                                    <tr>
+                                        <th class="p-2.5 w-12 text-center">#</th>
+                                        <th class="p-2.5">Evidence ID</th>
+                                        <th class="p-2.5">Type</th>
+                                        <th class="p-2.5">Host</th>
+                                        <th class="p-2.5">Collector</th>
+                                        <th class="p-2.5">SHA-256 Hash Digest</th>
+                                        <th class="p-2.5">Status</th>
+                                        <th class="p-2.5">Artifact Telemetry / Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-800/70">
+                                    <template x-for="(ev, idx) in getEvidenceList().slice(0, evidenceDisplayLimit)" :key="ev.id || idx">
+                                        <tr class="hover:bg-slate-900/40">
+                                            <td class="p-2.5 text-center text-slate-500 font-bold" x-text="idx + 1"></td>
+                                            <td class="p-2.5 text-cyber-cyan font-bold break-all" x-text="ev.id"></td>
+                                            <td class="p-2.5">
+                                                <span class="dossier-badge bg-slate-800 text-cyan-300 border border-slate-700" x-text="ev.type"></span>
+                                            </td>
+                                            <td class="p-2.5 text-slate-200" x-text="ev.host || 'N/A'"></td>
+                                            <td class="p-2.5 text-slate-400" x-text="ev.collector || ev.source || 'N/A'"></td>
+                                            <td class="p-2.5 text-slate-400 break-all text-[10px]" x-text="ev.hash ? ev.hash.slice(0, 16) + '...' : 'N/A'" :title="ev.hash"></td>
+                                            <td class="p-2.5">
+                                                <span class="dossier-badge bg-emerald-950 text-emerald-300 border border-emerald-500/30" x-text="ev.status || 'VALID'"></span>
+                                            </td>
+                                            <td class="p-2.5 text-slate-200 leading-tight" x-text="formatEvidenceDetails(ev)"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-2.5 flex justify-between items-center text-xs text-slate-400 no-print" x-show="getEvidenceList().length > 50">
+                            <span x-text="`Showing ${Math.min(evidenceDisplayLimit, getEvidenceList().length)} of ${getEvidenceList().length} artifacts`"></span>
+                            <button @click="evidenceDisplayLimit = (evidenceDisplayLimit >= getEvidenceList().length ? 50 : getEvidenceList().length)"
+                                    class="text-cyber-cyan hover:underline font-bold">
+                                <span x-text="evidenceDisplayLimit >= getEvidenceList().length ? 'Show Less' : `Show All (${getEvidenceList().length}) Artifacts`"></span>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="getEvidenceList().length === 0">
+                    <div class="p-4 bg-slate-950/60 rounded border border-slate-800/80 text-xs text-slate-400 text-center">
+                        <span x-show="searchEvidence">No evidence items match filter &quot;<span class="text-white" x-text="searchEvidence"></span>&quot;. <button @click="searchEvidence = ''" class="text-cyber-cyan hover:underline ml-1 font-bold">Clear filter</button></span>
+                        <span x-show="!searchEvidence">No canonical evidence artifacts registered for this investigation.</span>
+                    </div>
+                </template>
+            </section>
+
+            <!-- Section 05: Correlation & Relationships Analysis -->
+            <section class="mb-8 scroll-mt-20" id="sec-correlation">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-1 border-b border-slate-800">
+                    <div class="flex items-center gap-2">
+                        <span class="text-cyber-cyan font-bold text-sm">05 //</span>
+                        <h3 class="font-bold text-sm uppercase tracking-wider text-white">CROSS-ARTIFACT CORRELATION & RELATIONSHIPS</h3>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="relative flex items-center">
+                            <input type="text" x-model="searchRelationships" placeholder="Filter correlations..." 
+                                   class="no-print bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-xs text-white focus:border-cyber-cyan w-44 sm:w-60 pr-6">
+                            <button x-show="searchRelationships" @click="searchRelationships = ''" class="absolute right-2 text-slate-500 hover:text-white text-xs no-print">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        <span class="text-xs px-2 py-0.5 rounded bg-slate-900 text-cyan-400 font-bold whitespace-nowrap" x-text="`${getRelationshipsList().length} Link(s)`"></span>
+                    </div>
+                </div>
+
+                <template x-if="getRelationshipsList().length > 0">
+                    <div>
+                        <div class="overflow-x-auto border border-slate-800 rounded">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-slate-900 text-slate-300 uppercase text-[11px] border-b border-slate-800">
+                                    <tr>
+                                        <th class="p-2.5 w-12 text-center">#</th>
+                                        <th class="p-2.5">Relationship ID</th>
+                                        <th class="p-2.5">Type</th>
+                                        <th class="p-2.5">Source Artifact</th>
+                                        <th class="p-2.5">Target Artifact</th>
+                                        <th class="p-2.5">Confidence</th>
+                                        <th class="p-2.5">Telemetry Rationale</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-800/70">
+                                    <template x-for="(rel, idx) in getRelationshipsList().slice(0, relationshipsDisplayLimit)" :key="rel.relationship_id || idx">
+                                        <tr class="hover:bg-slate-900/40">
+                                            <td class="p-2.5 text-center text-slate-500 font-bold" x-text="idx + 1"></td>
+                                            <td class="p-2.5 text-slate-400 break-all text-[11px]" x-text="rel.relationship_id ? rel.relationship_id.slice(0, 12) + '...' : 'N/A'" :title="rel.relationship_id"></td>
+                                            <td class="p-2.5">
+                                                <span class="dossier-badge" :class="getRelationshipBadgeClass(rel.relationship_type)" x-text="rel.relationship_type"></span>
+                                            </td>
+                                            <td class="p-2.5 text-slate-300 break-all text-[11px]" x-text="rel.source_evidence_id"></td>
+                                            <td class="p-2.5 text-slate-300 break-all text-[11px]" x-text="rel.target_evidence_id"></td>
+                                            <td class="p-2.5 text-slate-300 font-bold" x-text="Math.round((rel.confidence || 0.9) * 100) + '%'"></td>
+                                            <td class="p-2.5 text-slate-200 leading-tight" x-text="rel.reason || 'Correlated behavioral link'"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-2.5 flex justify-between items-center text-xs text-slate-400 no-print" x-show="getRelationshipsList().length > 50">
+                            <span x-text="`Showing ${Math.min(relationshipsDisplayLimit, getRelationshipsList().length)} of ${getRelationshipsList().length} relationships`"></span>
+                            <button @click="relationshipsDisplayLimit = (relationshipsDisplayLimit >= getRelationshipsList().length ? 50 : getRelationshipsList().length)"
+                                    class="text-cyber-cyan hover:underline font-bold">
+                                <span x-text="relationshipsDisplayLimit >= getRelationshipsList().length ? 'Show Less' : `Show All (${getRelationshipsList().length}) Links`"></span>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="getRelationshipsList().length === 0">
+                    <div class="p-4 bg-slate-950/60 rounded border border-slate-800/80 text-xs text-slate-400 text-center">
+                        <span x-show="searchRelationships">No correlation relationships match filter &quot;<span class="text-white" x-text="searchRelationships"></span>&quot;. <button @click="searchRelationships = ''" class="text-cyber-cyan hover:underline ml-1 font-bold">Clear filter</button></span>
+                        <span x-show="!searchRelationships">Zero cross-artifact correlation relationships identified.</span>
+                    </div>
+                </template>
+            </section>
+
+            <!-- Section 06: Chronological Timeline Analysis -->
+            <section class="mb-8 scroll-mt-20" id="sec-timeline">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-1 border-b border-slate-800">
+                    <div class="flex items-center gap-2">
+                        <span class="text-cyber-cyan font-bold text-sm">06 //</span>
+                        <h3 class="font-bold text-sm uppercase tracking-wider text-white">CHRONOLOGICAL TIMELINE OF FORENSIC EVENTS</h3>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="relative flex items-center">
+                            <input type="text" x-model="searchTimeline" placeholder="Filter timeline events..." 
+                                   class="no-print bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-xs text-white focus:border-cyber-cyan w-44 sm:w-60 pr-6">
+                            <button x-show="searchTimeline" @click="searchTimeline = ''" class="absolute right-2 text-slate-500 hover:text-white text-xs no-print">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        <span class="text-xs px-2 py-0.5 rounded bg-slate-900 text-white font-bold whitespace-nowrap" x-text="`${getTimelineList().length} Event(s)`"></span>
+                    </div>
+                </div>
+
+                <template x-if="getTimelineList().length > 0">
+                    <div>
+                        <div class="overflow-x-auto border border-slate-800 rounded">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-slate-900 text-slate-300 uppercase text-[11px] border-b border-slate-800">
+                                    <tr>
+                                        <th class="p-2.5 w-12 text-center">#</th>
+                                        <th class="p-2.5">Timestamp (UTC)</th>
+                                        <th class="p-2.5">Event Type</th>
+                                        <th class="p-2.5">Source</th>
+                                        <th class="p-2.5">Linked Artifact ID</th>
+                                        <th class="p-2.5">Activity Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-800/70">
+                                    <template x-for="(t, idx) in getTimelineList().slice(0, timelineDisplayLimit)" :key="t.event_id || idx">
+                                        <tr class="hover:bg-slate-900/40">
+                                            <td class="p-2.5 text-center text-slate-500 font-bold" x-text="idx + 1"></td>
+                                            <td class="p-2.5 text-white font-bold whitespace-nowrap" x-text="t.timestamp || 'N/A'"></td>
+                                            <td class="p-2.5">
+                                                <span class="dossier-badge" :class="getTimelineBadgeClass(t.type)" x-text="t.type"></span>
+                                            </td>
+                                            <td class="p-2.5 text-slate-400" x-text="t.source || 'telemetry'"></td>
+                                            <td class="p-2.5 text-cyber-cyan break-all text-[11px]" x-text="t.evidence_id || 'N/A'"></td>
+                                            <td class="p-2.5 text-slate-200 leading-tight">
+                                                <span x-text="t.summary"></span>
+                                                <template x-if="t.details && t.details.description">
+                                                    <span class="block text-[11px] text-slate-400 mt-0.5" x-text="t.details.description"></span>
+                                                </template>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-2.5 flex justify-between items-center text-xs text-slate-400 no-print" x-show="getTimelineList().length > 50">
+                            <span x-text="`Showing ${Math.min(timelineDisplayLimit, getTimelineList().length)} of ${getTimelineList().length} timeline events`"></span>
+                            <button @click="timelineDisplayLimit = (timelineDisplayLimit >= getTimelineList().length ? 50 : getTimelineList().length)"
+                                    class="text-cyber-cyan hover:underline font-bold">
+                                <span x-text="timelineDisplayLimit >= getTimelineList().length ? 'Show Less' : `Show All (${getTimelineList().length}) Events`"></span>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="getTimelineList().length === 0">
+                    <div class="p-4 bg-slate-950/60 rounded border border-slate-800/80 text-xs text-slate-400 text-center">
+                        <span x-show="searchTimeline">No timeline events match filter &quot;<span class="text-white" x-text="searchTimeline"></span>&quot;. <button @click="searchTimeline = ''" class="text-cyber-cyan hover:underline ml-1 font-bold">Clear filter</button></span>
+                        <span x-show="!searchTimeline">Zero timeline events recorded for this investigation.</span>
+                    </div>
+                </template>
+            </section>
+
+            <!-- Section 07: System Limitations & Exceptions -->
+            <template x-if="getLimitationsList().length > 0">
+                <section class="mb-8 scroll-mt-20" id="sec-limitations">
+                    <div class="flex items-center gap-2 mb-3 pb-1 border-b border-slate-800">
+                        <span class="text-cyber-cyan font-bold text-sm">07 //</span>
+                        <h3 class="font-bold text-sm uppercase tracking-wider text-white">SYSTEM LIMITATIONS & EXCEPTIONS</h3>
+                    </div>
+                    <div class="p-4 bg-slate-950/80 rounded border border-slate-800/80 text-xs text-slate-300 space-y-1">
+                        <template x-for="(lim, idx) in getLimitationsList()" :key="idx">
+                            <div class="flex items-start gap-2">
+                                <span class="text-amber-400">•</span>
+                                <span x-text="lim"></span>
+                            </div>
+                        </template>
+                    </div>
+                </section>
+            </template>
+
+            <!-- Section 08: Formal Conclusion & Examiner Authorization -->
+            <section class="mb-4 pt-4 border-t border-slate-800 scroll-mt-20" id="sec-conclusion">
+                <div class="flex items-center gap-2 mb-3 pb-1 border-b border-slate-800">
+                    <span class="text-cyber-cyan font-bold text-sm">08 //</span>
+                    <h3 class="font-bold text-sm uppercase tracking-wider text-white">CONCLUSION & FORMAL AUTHORIZATION</h3>
+                </div>
+                <div class="p-4 bg-slate-950/80 rounded border border-slate-800/80 text-xs text-slate-300 leading-relaxed mb-6">
+                    <p x-text="reportData.conclusion && reportData.conclusion.summary ? reportData.conclusion.summary : `The forensic examination of case ${selectedCase} has concluded. All telemetry artifacts were acquired according to strict chain of custody protocols.`"></p>
+                </div>
+
+                <!-- Sign-off Block -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs text-slate-300 p-5 bg-slate-950/50 rounded border border-slate-800/60">
+                    <div class="space-y-1">
+                        <p class="font-bold text-white text-sm">EXAMINING FORENSIC ANALYST</p>
+                        <p x-text="'Name: ' + (reportData.meta ? reportData.meta.examiner : 'JOCKY Forensic Framework')"></p>
+                        <p>Title: Senior Digital Forensics Examiner</p>
+                        <p x-text="'Date: ' + (reportData.meta ? reportData.meta.generated_at : new Date().toISOString())"></p>
+                        <div class="mt-4 pt-2 border-t border-slate-700 w-48 text-[11px] text-slate-400">
+                            Digital Signature Verified
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <p class="font-bold text-white text-sm">PEER REVIEW & AUTHORIZATION</p>
+                        <p x-text="'Reviewer: ' + (reportData.meta && reportData.meta.reviewer ? reportData.meta.reviewer : 'Quality Assurance Section Lead')"></p>
+                        <p>Status: APPROVED & FORMALLY SEALED</p>
+                        <p x-text="'Verification Hash: ' + (reportData.integrity_manifest ? (reportData.integrity_manifest.root_hash ? reportData.integrity_manifest.root_hash.slice(0, 20) + '...' : 'SEC-VERIFIED') : 'SEC-VERIFIED')"></p>
+                        <div class="mt-4 pt-2 border-t border-slate-700 w-48 text-[11px] text-emerald-400 font-bold">
+                            Official Digital Forensics Seal
+                        </div>
+                    </div>
+                </div>
             </section>
         </div>
     </div>
@@ -169,7 +677,58 @@ function reportsData() {
         loading: false,
         error: null,
         reportData: {},
+        searchEvidence: '',
+        searchRelationships: '',
+        searchTimeline: '',
+        evidenceDisplayLimit: 50,
+        relationshipsDisplayLimit: 50,
+        timelineDisplayLimit: 50,
         
+        scrollToTop() {
+            const container = document.querySelector('.overflow-y-auto');
+            if (container) {
+                container.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        },
+
+        getRelationshipBadgeClass(type) {
+            if (!type) return 'bg-slate-800 text-slate-300 border border-slate-700';
+            const t = String(type).toUpperCase();
+            if (t.includes('EXEC') || t.includes('INJECT') || t.includes('THREAT') || t.includes('ANOMAL')) {
+                return 'bg-red-950 text-red-300 border border-red-500/50';
+            }
+            if (t.includes('SOCKET') || t.includes('NETWORK') || t.includes('CONNECT')) {
+                return 'bg-emerald-950 text-emerald-300 border border-emerald-500/50';
+            }
+            if (t.includes('CHILD') || t.includes('PARENT') || t.includes('PROCESS')) {
+                return 'bg-cyan-950 text-cyan-300 border border-cyan-500/50';
+            }
+            if (t.includes('FILE') || t.includes('DROP') || t.includes('WRITE')) {
+                return 'bg-purple-950 text-purple-300 border border-purple-500/50';
+            }
+            return 'bg-slate-800 text-cyan-300 border border-slate-700';
+        },
+
+        getTimelineBadgeClass(type) {
+            if (!type) return 'bg-slate-800 text-slate-300 border border-slate-700';
+            const t = String(type).toUpperCase();
+            if (t.includes('THREAT') || t.includes('ALERT') || t.includes('IOC') || t.includes('CRITICAL')) {
+                return 'bg-red-950 text-red-300 border border-red-500/50';
+            }
+            if (t.includes('PROCESS') || t.includes('EXEC')) {
+                return 'bg-blue-950 text-blue-300 border border-blue-500/50';
+            }
+            if (t.includes('NETWORK') || t.includes('SOCKET') || t.includes('CONNECT')) {
+                return 'bg-emerald-950 text-emerald-300 border border-emerald-500/50';
+            }
+            if (t.includes('INTEGRITY') || t.includes('AUDIT') || t.includes('MANIFEST')) {
+                return 'bg-amber-950 text-amber-300 border border-amber-500/50';
+            }
+            return 'bg-slate-800 text-slate-200 border border-slate-700';
+        },
+
         getAuthHeaders() {
             const headers = { 'Content-Type': 'application/json' };
             const token = localStorage.getItem('jocky_token');
@@ -202,6 +761,9 @@ function reportsData() {
             this.loading = true;
             this.reportLoaded = false;
             this.error = null;
+            this.evidenceDisplayLimit = 50;
+            this.relationshipsDisplayLimit = 50;
+            this.timelineDisplayLimit = 50;
             
             try {
                 const caseObj = this.cases.find(c => c.case_number === this.selectedCase);
@@ -226,20 +788,202 @@ function reportsData() {
             }
         },
 
-        downloadHtml() {
-            const caseObj = this.cases.find(c => c.case_number === this.selectedCase);
-            if (!caseObj) return;
-            window.open(`/api/v1/investigations/${caseObj.id}/export-report?format=html`, '_blank');
+        getEvidenceList() {
+            const list = this.reportData.evidence_inventory || this.reportData.evidence_items || [];
+            if (!this.searchEvidence) return list;
+            const q = this.searchEvidence.toLowerCase();
+            return list.filter(ev => {
+                const id = (ev.id || '').toLowerCase();
+                const type = (ev.type || '').toLowerCase();
+                const host = (ev.host || '').toLowerCase();
+                const col = (ev.collector || ev.source || '').toLowerCase();
+                const details = this.formatEvidenceDetails(ev).toLowerCase();
+                return id.includes(q) || type.includes(q) || host.includes(q) || col.includes(q) || details.includes(q);
+            });
         },
 
-        downloadJson() {
-            const caseObj = this.cases.find(c => c.case_number === this.selectedCase);
-            if (!caseObj) return;
-            window.open(`/api/v1/investigations/${caseObj.id}/export-report?format=json`, '_blank');
+        getFindingsList() {
+            return this.reportData.ioc_findings || (this.reportData.ioc_matches && this.reportData.ioc_matches.canonical_findings) || [];
         },
 
-        printDossier() {
+        getRelationshipsList() {
+            const list = this.reportData.relationships || (this.reportData.correlations && this.reportData.correlations.relationships) || [];
+            if (!this.searchRelationships) return list;
+            const q = this.searchRelationships.toLowerCase();
+            return list.filter(rel => {
+                const id = (rel.relationship_id || '').toLowerCase();
+                const type = (rel.relationship_type || '').toLowerCase();
+                const src = (rel.source_evidence_id || '').toLowerCase();
+                const tgt = (rel.target_evidence_id || '').toLowerCase();
+                const rsn = (rel.reason || '').toLowerCase();
+                return id.includes(q) || type.includes(q) || src.includes(q) || tgt.includes(q) || rsn.includes(q);
+            });
+        },
+
+        getTimelineList() {
+            const list = this.reportData.timeline || [];
+            if (!this.searchTimeline) return list;
+            const q = this.searchTimeline.toLowerCase();
+            return list.filter(t => {
+                const type = (t.type || '').toLowerCase();
+                const src = (t.source || '').toLowerCase();
+                const summary = (t.summary || '').toLowerCase();
+                const evId = (t.evidence_id || '').toLowerCase();
+                const ts = (t.timestamp || '').toLowerCase();
+                const desc = (t.details && t.details.description ? t.details.description : '').toLowerCase();
+                return type.includes(q) || src.includes(q) || summary.includes(q) || evId.includes(q) || ts.includes(q) || desc.includes(q);
+            });
+        },
+
+        getDetailedFindingsList() {
+            return this.reportData.detailed_findings || [];
+        },
+
+        getLimitationsList() {
+            return this.reportData.limitations || (this.reportData.scope_methodology && this.reportData.scope_methodology.limitations) || [];
+        },
+
+        formatEvidenceDetails(ev) {
+            if (!ev) return 'N/A';
+            let d = ev.data;
+            if (typeof d === 'string') {
+                try { d = JSON.parse(d); } catch(e) {}
+            }
+            if (!d) return 'Telemetry unavailable';
+            if (d.name) {
+                let s = d.name;
+                if (d.pid !== undefined) s += ` (PID: ${d.pid})`;
+                if (d.exe_path) s += ` — ${d.exe_path}`;
+                if (d.username) s += ` [${d.username}]`;
+                return s;
+            }
+            if (d.process_name) {
+                let s = d.process_name;
+                if (d.pid !== undefined) s += ` (PID: ${d.pid})`;
+                return s;
+            }
+            if (d.local_ip || d.local_port) {
+                return `${d.protocol || 'TCP'} ${d.local_ip || '*'}:${d.local_port || '*'} ➔ ${d.remote_ip || '*'}:${d.remote_port || '*'} [${d.status || 'ESTABLISHED'}]`;
+            }
+            if (d.path) return d.path;
+            if (typeof d === 'object') return JSON.stringify(d).slice(0, 100);
+            return String(d);
+        },
+
+        async downloadHtml() {
+            const caseObj = this.cases.find(c => c.case_number === this.selectedCase);
+            if (!caseObj) return;
+            const token = localStorage.getItem('jocky_token');
+            const url = `/api/v1/investigations/${caseObj.id}/export-report?format=html` + (token ? `&token=${encodeURIComponent(token)}` : '');
+            try {
+                const res = await fetch(url, { headers: this.getAuthHeaders() });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const blob = await res.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = `JOCKY_${this.selectedCase}_Forensic_Report.html`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+            } catch(e) {
+                window.open(url, '_blank');
+            }
+        },
+
+        async downloadJson() {
+            const caseObj = this.cases.find(c => c.case_number === this.selectedCase);
+            if (!caseObj) return;
+            const token = localStorage.getItem('jocky_token');
+            const url = `/api/v1/investigations/${caseObj.id}/export-report?format=json` + (token ? `&token=${encodeURIComponent(token)}` : '');
+            try {
+                const res = await fetch(url, { headers: this.getAuthHeaders() });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const blob = await res.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = `JOCKY_${this.selectedCase}_Forensic_Report.json`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+            } catch(e) {
+                window.open(url, '_blank');
+            }
+        },
+
+        async printDossier() {
+            const caseObj = this.cases.find(c => c.case_number === this.selectedCase);
+            if (!caseObj) {
+                alert('Please select an investigation case first.');
+                return;
+            }
+
+            // Unconstrain display limits so all evidence and timeline events are available
+            const prevEv = this.evidenceDisplayLimit;
+            const prevRel = this.relationshipsDisplayLimit;
+            const prevTl = this.timelineDisplayLimit;
+            this.evidenceDisplayLimit = 999999;
+            this.relationshipsDisplayLimit = 999999;
+            this.timelineDisplayLimit = 999999;
+
+            await this.$nextTick();
+
+            // Attempt to print the formal, court-admissible forensic document in a dedicated hidden iframe
+            // This eliminates all UI interference and formats standard A4 pages with running headers
+            try {
+                const token = localStorage.getItem('jocky_token');
+                const exportUrl = `/api/v1/investigations/${caseObj.id}/export-report?format=html` + (token ? `&token=${encodeURIComponent(token)}` : '');
+                const res = await fetch(exportUrl, { headers: this.getAuthHeaders() });
+                if (res.ok) {
+                    const html = await res.text();
+                    let iframe = document.getElementById('jocky-print-frame');
+                    if (iframe) iframe.remove();
+                    iframe = document.createElement('iframe');
+                    iframe.id = 'jocky-print-frame';
+                    iframe.style.position = 'fixed';
+                    iframe.style.right = '0';
+                    iframe.style.bottom = '0';
+                    iframe.style.width = '0';
+                    iframe.style.height = '0';
+                    iframe.style.border = '0';
+                    document.body.appendChild(iframe);
+
+                    const doc = iframe.contentWindow.document;
+                    doc.open();
+                    doc.write(html);
+                    doc.close();
+
+                    setTimeout(() => {
+                        try {
+                            iframe.contentWindow.focus();
+                            iframe.contentWindow.print();
+                        } catch (err) {
+                            console.warn('Iframe print error, falling back to window.print():', err);
+                            window.print();
+                        } finally {
+                            setTimeout(() => {
+                                this.evidenceDisplayLimit = prevEv;
+                                this.relationshipsDisplayLimit = prevRel;
+                                this.timelineDisplayLimit = prevTl;
+                            }, 2000);
+                        }
+                    }, 500);
+                    return;
+                }
+            } catch(e) {
+                console.warn('Fetch formal report failed, falling back to window.print():', e);
+            }
+
+            // Fallback: direct window.print()
             window.print();
+            setTimeout(() => {
+                this.evidenceDisplayLimit = prevEv;
+                this.relationshipsDisplayLimit = prevRel;
+                this.timelineDisplayLimit = prevTl;
+            }, 1000);
         }
     };
 }

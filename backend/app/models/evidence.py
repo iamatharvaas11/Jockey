@@ -16,7 +16,7 @@ class Evidence(Base):
     collector = Column(String, default="unknown")
     status = Column(String, default="success")
     data_json = Column(JSON, default=dict)
-    hash = Column(String(64), nullable=False)
+    hash = Column(String(64), nullable=True)
     limitations_json = Column(JSON, default=list)
     errors_json = Column(JSON, default=list)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

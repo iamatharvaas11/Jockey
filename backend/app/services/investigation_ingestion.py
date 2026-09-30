@@ -65,6 +65,17 @@ async def ingest_investigation_payload(
         # Check existing
         existing_ev = await db.execute(select(Evidence).filter(Evidence.id == ev_id))
         if not existing_ev.scalars().first():
+            ev_hash = ev.get("hash")
+            limitations = list(ev.get("limitations", []))
+            ev_status = ev.get("status")
+            if ev_hash is None:
+                if "Hash unavailable (file locked or unreadable)" not in limitations:
+                    limitations.append("Hash unavailable (file locked or unreadable)")
+                if not ev_status or ev_status == "VALID":
+                    ev_status = "PARTIAL"
+            elif not ev_status:
+                ev_status = "VALID"
+
             db_ev = Evidence(
                 id=ev_id,
                 investigation_id=inv_id,
@@ -73,10 +84,10 @@ async def ingest_investigation_payload(
                 type=ev.get("type", "process"),
                 source=ev.get("source", "system"),
                 collector=ev.get("collector", "ForensicCollector"),
-                status=ev.get("status", "VALID"),
-                hash=ev.get("hash"),
+                status=ev_status,
+                hash=ev_hash,
                 data_json=ev.get("data", {}),
-                limitations_json=ev.get("limitations", []),
+                limitations_json=limitations,
                 errors_json=ev.get("errors", []),
             )
             db.add(db_ev)

@@ -66,18 +66,23 @@ async def generate_report_endpoint(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles(["ADMIN", "ANALYST"])),
 ):
+    from app.services.report_assembly import assemble_investigation_report_data
+
     inv_result = await db.execute(select(Investigation).filter(Investigation.id == investigation_id))
     inv = inv_result.scalars().first()
     if not inv:
         raise HTTPException(status_code=404, detail="Investigation not found")
 
-    gen = ReportGenerator(case_id=inv.case_number, examiner=current_user.full_name or current_user.email)
-    report_dict = gen.generate()
+    examiner_name = current_user.full_name or current_user.email or "JOCKY Forensic Framework"
+    report_dict = await assemble_investigation_report_data(db, investigation_id, examiner=examiner_name)
+    if not report_dict:
+        gen = ReportGenerator(case_id=inv.case_number, examiner=examiner_name)
+        report_dict = gen.generate()
 
     rep = Report(
         investigation_id=investigation_id,
         case_id=inv.case_number,
-        examiner=gen.examiner,
+        examiner=report_dict.get("meta", {}).get("examiner", examiner_name),
         integrity_status=report_dict.get("summary", {}).get("integrity_status", "unverified"),
         root_hash=report_dict.get("integrity_manifest", {}).get("root_hash"),
         report_json=report_dict,

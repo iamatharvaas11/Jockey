@@ -131,7 +131,11 @@ class FileCollector(BaseCollector):
                     files_data.append(meta)
                     continue
 
-                for root, dirs, files in os.walk(base_path):
+                def _on_walk_error(err: OSError):
+                    errors.append(f"Access denied accessing directory: {err.filename}")
+                    limitations.append(f"Directory unreadable (access denied): {err.filename}")
+
+                for root, dirs, files in os.walk(base_path, onerror=_on_walk_error):
                     for file in files:
                         if len(files_data) >= max_files:
                             limitations.append(f"File count reached collection cap ({max_files} files).")
@@ -149,6 +153,9 @@ class FileCollector(BaseCollector):
 
                             meta = self.get_metadata(filepath)
                             hashes = self.hash_file(filepath)
+                            if hashes.get("sha256") is None and meta.get("size", 0) > 0:
+                                meta["hash_error"] = "Hash calculation failed (locked or unreadable file)"
+                                limitations.append(f"Hash calculation failed for {filepath}: file locked or unreadable")
                             meta.update(hashes)
                             files_data.append(meta)
 

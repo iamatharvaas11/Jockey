@@ -10,6 +10,9 @@ from app.models.endpoint import Endpoint
 from app.models.artifact import Artifact
 from app.models.ioc import IOC
 from app.models.timeline_event import TimelineEvent
+from app.models.evidence import Evidence
+from app.models.relationship import Relationship
+from app.models.report import Report
 from app.schemas.investigation import InvestigationCreate, InvestigationUpdate, InvestigationResponse, InvestigationList
 from app.api.deps import get_current_user, require_roles
 from app.models.user import User
@@ -123,6 +126,9 @@ async def delete_investigation(
     await db.execute(delete(Artifact).filter(Artifact.investigation_id == id))
     await db.execute(delete(IOC).filter(IOC.investigation_id == id))
     await db.execute(delete(TimelineEvent).filter(TimelineEvent.investigation_id == id))
+    await db.execute(delete(Evidence).filter(Evidence.investigation_id == id))
+    await db.execute(delete(Relationship).filter(Relationship.investigation_id == id))
+    await db.execute(delete(Report).filter(Report.investigation_id == id))
     
     await db.delete(inv)
     await db.commit()
@@ -149,12 +155,34 @@ async def ingest_investigation(
 async def export_investigation_report(
     id: str,
     format: str = "html",
+    token: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    request: Request = None,
 ):
     from app.models.report import Report
     from engine.report_generator import ReportGenerator
     from fastapi.responses import HTMLResponse, JSONResponse
+    from app.core.security import decode_access_token
+
+    # Authenticate via Header, query parameter, or cookie
+    user = None
+    auth_header = request.headers.get("Authorization") if request else None
+    raw_token = None
+    if auth_header and auth_header.startswith("Bearer "):
+        raw_token = auth_header.split(" ", 1)[1]
+    elif token:
+        raw_token = token
+    elif request and "jocky_token" in request.cookies:
+        raw_token = request.cookies.get("jocky_token")
+
+    if raw_token:
+        payload = decode_access_token(raw_token)
+        if payload and "sub" in payload:
+            res = await db.execute(select(User).filter(User.email == payload["sub"]))
+            user = res.scalars().first()
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
 
     inv_res = await db.execute(select(Investigation).filter(Investigation.id == id))
     inv = inv_res.scalars().first()
@@ -167,15 +195,46 @@ async def export_investigation_report(
         ).order_by(Report.created_at.desc())
     )
     rep = rep_res.scalars().first()
-    gen = ReportGenerator(case_id=inv.case_number)
+    examiner_name = user.full_name or user.email or "JOCKY Forensic Framework"
+    gen = ReportGenerator(case_id=inv.case_number, examiner=examiner_name)
 
-    if rep:
+    if rep and rep.report_json and (rep.report_json.get("evidence_items") or rep.report_json.get("evidence_inventory")):
         rep_data = rep.report_json
     else:
-        rep_data = gen.generate()
+        from app.services.report_assembly import assemble_investigation_report_data
+        rep_data = await assemble_investigation_report_data(db, id, examiner=examiner_name)
+        if not rep_data:
+            rep_data = rep.report_json if rep and rep.report_json else gen.generate()
 
     if format.lower() == "json":
         return JSONResponse(content=rep_data)
     html_content = gen.render_html(rep_data)
     return HTMLResponse(content=html_content)
+
+
+@router.get("/{id}/process-graph")
+async def get_case_process_graph(
+    id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Retrieve dynamic case-specific parent-child process tree and socket correlation graph
+    for the specified investigation.
+    """
+    from app.services.process_correlation_service import get_investigation_process_graph
+    return await get_investigation_process_graph(db, id)
+
+
+@router.post("/{id}/correlate-live")
+async def correlate_live_endpoint(
+    id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Acquire live host process & socket telemetry, attach to the specified investigation,
+    and return the updated case process graph.
+    """
+    from app.services.process_correlation_service import correlate_live_for_investigation
+    return await correlate_live_for_investigation(db, id)
+
 

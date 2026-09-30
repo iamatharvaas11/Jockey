@@ -24,6 +24,8 @@ class IntegrityError(Exception):
 
 class VerificationStatus(str, Enum):
     VALID = "VALID"
+    INVALID = "INVALID"
+    UNVALIDATED = "UNVALIDATED"
     MODIFIED = "MODIFIED"
     CORRUPTED = "CORRUPTED"
     MISSING_EVIDENCE = "MISSING_EVIDENCE"
@@ -113,6 +115,8 @@ class VerificationReport:
     modified_count: int
     missing_count: int
     corrupted_count: int
+    invalid_count: int = 0
+    unvalidated_count: int = 0
     details: List[Dict[str, Any]] = field(default_factory=list)
 
     @property
@@ -171,8 +175,12 @@ class EvidenceIntegrityManager:
         """Construct an IntegrityManifest for a collection of evidence items."""
         manifest = IntegrityManifest(case_id=case_id, examiner=examiner)
         entry_hashes = []
+        has_invalid = False
 
         for item in items:
+            if getattr(item, "errors", None) or getattr(item, "status", None) == "failed":
+                has_invalid = True
+
             if not item.hash:
                 EvidenceIntegrityManager.attach_hash(item)
 
@@ -188,14 +196,22 @@ class EvidenceIntegrityManager:
             entry_hashes.append(item.hash)
 
         manifest.root_hash = EvidenceIntegrityManager.compute_root_hash(entry_hashes)
-        manifest.status = "verified"
+        if len(items) == 0:
+            manifest.status = "unvalidated"
+        elif has_invalid:
+            manifest.status = "invalid"
+        else:
+            manifest.status = "verified"
         return manifest
 
     @staticmethod
     def verify_item(item: CanonicalEvidenceItem, recorded_hash: Optional[str] = None) -> VerificationStatus:
         """
         Verify an individual evidence item against a recorded hash or its own attached hash.
-        Returns VerificationStatus.VALID if intact, or VerificationStatus.MODIFIED if tampered.
+        - If hash is missing or uncomputable: CORRUPTED
+        - If hash does not match recorded hash: MODIFIED (tampered)
+        - If hash matches, but item has validation errors or failed status: INVALID
+        - If hash matches and item is intact: VALID
         """
         expected = recorded_hash or item.hash
         if not expected:
@@ -203,9 +219,14 @@ class EvidenceIntegrityManager:
 
         try:
             computed = EvidenceIntegrityManager.compute_evidence_hash(item)
-            if computed.lower() == expected.lower():
-                return VerificationStatus.VALID
-            return VerificationStatus.MODIFIED
+            if computed.lower() != expected.lower():
+                return VerificationStatus.MODIFIED
+
+            # Hash matches. Check if item has recorded validation errors or failed status
+            if getattr(item, "errors", None) or getattr(item, "status", None) == "failed":
+                return VerificationStatus.INVALID
+
+            return VerificationStatus.VALID
         except IntegrityError:
             return VerificationStatus.CORRUPTED
 
@@ -216,7 +237,7 @@ class EvidenceIntegrityManager:
     ) -> VerificationReport:
         """
         Verify all entries in an IntegrityManifest against stored evidence items.
-        Detects tampering, modifications, missing records, and root hash discrepancies.
+        Detects tampering, modifications, missing records, invalid schema, and root hash discrepancies.
         """
         if isinstance(items, list):
             item_map = {it.id: it for it in items}
@@ -228,6 +249,7 @@ class EvidenceIntegrityManager:
         mod_cnt = 0
         missing_cnt = 0
         corrupted_cnt = 0
+        invalid_cnt = 0
         computed_entry_hashes = []
 
         for entry in manifest.entries:
@@ -247,6 +269,13 @@ class EvidenceIntegrityManager:
                 valid_cnt += 1
                 computed_entry_hashes.append(entry.hash_sha256)
                 details.append({"evidence_id": eid, "status": VerificationStatus.VALID.value})
+            elif status == VerificationStatus.INVALID:
+                invalid_cnt += 1
+                details.append({
+                    "evidence_id": eid,
+                    "status": VerificationStatus.INVALID.value,
+                    "errors": getattr(item, "errors", []) or ["Schema validation failed"],
+                })
             elif status == VerificationStatus.MODIFIED:
                 mod_cnt += 1
                 details.append({
@@ -254,6 +283,13 @@ class EvidenceIntegrityManager:
                     "status": VerificationStatus.MODIFIED.value,
                     "expected_hash": entry.hash_sha256,
                     "computed_hash": EvidenceIntegrityManager.compute_evidence_hash(item),
+                })
+            elif status == VerificationStatus.MISSING_EVIDENCE:
+                missing_cnt += 1
+                details.append({
+                    "evidence_id": eid,
+                    "status": VerificationStatus.MISSING_EVIDENCE.value,
+                    "reason": "Evidence item not found in store",
                 })
             else:
                 corrupted_cnt += 1
@@ -273,13 +309,18 @@ class EvidenceIntegrityManager:
                 "reason": "Root hash does not match computed entry digests",
             })
 
-        overall_status = VerificationStatus.VALID
-        if mod_cnt > 0:
+        if len(manifest.entries) == 0:
+            overall_status = VerificationStatus.UNVALIDATED
+        elif invalid_cnt > 0:
+            overall_status = VerificationStatus.INVALID
+        elif mod_cnt > 0:
             overall_status = VerificationStatus.MODIFIED
         elif corrupted_cnt > 0:
             overall_status = VerificationStatus.CORRUPTED
         elif missing_cnt > 0:
             overall_status = VerificationStatus.MISSING_EVIDENCE
+        else:
+            overall_status = VerificationStatus.VALID
 
         return VerificationReport(
             status=overall_status,
@@ -288,6 +329,7 @@ class EvidenceIntegrityManager:
             modified_count=mod_cnt,
             missing_count=missing_cnt,
             corrupted_count=corrupted_cnt,
+            invalid_count=invalid_cnt,
             details=details,
         )
 

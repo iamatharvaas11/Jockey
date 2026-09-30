@@ -108,6 +108,11 @@ def test_jit_execution_foreach_loop_filtering():
 
     compiler = NativeCompiler()
     ctx = native_abi.reset_context()
+    ctx.collections[1] = [
+        {"pid": 4, "ppid": 0, "name": "System", "status": "RUNNING"},
+        {"pid": 1004, "ppid": 4, "name": "svchost.exe", "status": "RUNNING"},
+        {"pid": 2048, "ppid": 1004, "name": "powershell.exe", "status": "RUNNING"},
+    ]
 
     exit_code = compiler.execute_jit(ir_str)
     assert exit_code == 0

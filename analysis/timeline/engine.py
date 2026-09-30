@@ -1,3 +1,4 @@
+
 """
 JOCKY Forensic Timeline Engine
 Normalizes heterogeneous canonical evidence (process, file, network, event, registry)
@@ -20,8 +21,8 @@ class TimelineEngine:
         timeline_events: List[TimelineEvent] = []
 
         for item in items:
-            t = item.type.lower()
-            data = item.data or {}
+            t = (item.type or "").lower()
+            data = item.data if isinstance(item.data, dict) else {}
 
             if t == EvidenceType.PROCESS.value:
                 timeline_events.extend(self._process_to_timeline(item, data))
@@ -184,19 +185,21 @@ class TimelineEngine:
     def _sort_key(event: TimelineEvent) -> tuple[int, str]:
         """
         Produce a deterministic sorting key:
-        Items with valid timestamps come first sorted chronologically;
-        Items with None/empty timestamp come last.
+        Items with valid timestamps come first sorted chronologically (bucket 0);
+        Items with unparseable/invalid timestamps come next (bucket 1);
+        Items with None/empty timestamp come last (bucket 2).
         """
         ts = event.timestamp
         if not ts:
-            return 1, ""
+            return 2, ""
 
         # Normalize timestamp format for comparison
-        clean_ts = ts.replace("Z", "+00:00")
+        clean_ts = str(ts).replace("Z", "+00:00")
         try:
             dt = datetime.fromisoformat(clean_ts)
-            # Normalize to UTC timestamp float
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
             return 0, dt.astimezone(timezone.utc).isoformat()
         except Exception:
-            return 0, str(ts)
+            return 1, str(ts)
 

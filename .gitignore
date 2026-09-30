@@ -26,6 +26,8 @@ env/
 
 # Database & Persistent State
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite3
 

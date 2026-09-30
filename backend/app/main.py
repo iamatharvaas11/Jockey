@@ -131,6 +131,10 @@ async def health_page(request: Request):
 async def settings_page(request: Request):
     return templates.TemplateResponse(request=request, name="settings.html")
 
+@app.get('/security')
+async def security_page(request: Request):
+    return templates.TemplateResponse(request=request, name='security.html')
+
 
 def run_server():
     """CLI entrypoint to start the JOCKY server."""
