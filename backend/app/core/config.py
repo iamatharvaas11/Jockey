@@ -10,7 +10,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
     PROJECT_NAME: str = "JOCKY"
     STORAGE_DIR: str = "./storage"
-    CORS_ORIGINS: List[str] = ["http://localhost:8000"]
+    CORS_ORIGINS: List[str] = ["*"]
+    BACKEND_URL: Optional[str] = "http://localhost:8000"
     LOG_LEVEL: str = "INFO"
     
     class Config:

@@ -5,6 +5,7 @@ Defines endpoint identities, configuration, task contracts, and lifecycle status
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+import os
 import socket
 from typing import Any, Dict, List, Optional
 import uuid
@@ -23,7 +24,7 @@ class TaskStatus(str, Enum):
 @dataclass
 class AgentConfig:
     """Agent runtime configuration and server connection details."""
-    server_url: str = "http://localhost:8000"
+    server_url: str = field(default_factory=lambda: os.environ.get("BACKEND_URL", os.environ.get("SERVER_URL", "http://localhost:8000")))
     agent_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     api_token: str = field(default_factory=lambda: str(uuid.uuid4()))
     hostname: str = field(default_factory=socket.gethostname)
