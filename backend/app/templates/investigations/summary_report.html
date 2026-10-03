@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JOCKY // Forensic Investigation Summary</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dfir: {
+                            critical: '#991b1b',
+                            high: '#dc2626',
+                            medium: '#d97706',
+                            low: '#16a34a',
+                            info: '#475569',
+                            dark: '#0f172a',
+                            light: '#f8fafc',
+                            border: '#e2e8f0',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Consolas', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: #f1f5f9;
+            color: #0f172a;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .report-paper {
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        @media print {
+            body {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .report-paper {
+                box-shadow: none !important;
+                border: none !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .page-break {
+                page-break-before: always;
+            }
+            table {
+                page-break-inside: auto;
+            }
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8" x-data="summaryReportApp('{{ id }}')" x-init="loadReport()">
+
+    <!-- Top Action & Navigation Bar (no-print) -->
+    <div class="max-w-5xl mx-auto mb-6 flex flex-wrap items-center justify-between gap-4 no-print bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+        <div class="flex items-center gap-3">
+            <a :href="'/investigations/' + caseId" class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded border border-slate-300 transition-colors">
+                <i class="fa-solid fa-arrow-left"></i> Back to Workspace
+            </a>
+            <span class="text-xs text-slate-400">|</span>
+            <span class="text-xs font-mono font-semibold text-slate-600" x-text="'Case: ' + (report ? report.header.case_id : caseId)"></span>
+            <span class="text-xs px-2 py-0.5 rounded font-mono font-bold uppercase"
+                  :class="report && report.header.integrity_status === 'VERIFIED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
+                  x-text="report ? report.header.integrity_status : 'CHECKING'"></span>
+        </div>
+        <div class="flex items-center gap-2.5">
+            <button @click="window.print()" class="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded shadow transition-colors">
+                <i class="fa-solid fa-print"></i> Print / Save PDF
+            </button>
+            <a :href="'/investigations/' + caseId + '/export-report'" target="_blank" class="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded border border-slate-300 transition-colors" title="View Detailed Technical & Court Methodology Report">
+                <i class="fa-solid fa-file-contract text-blue-600"></i> Technical Report
+            </a>
+            <button @click="loadReport()" class="p-1.5 text-slate-500 hover:text-slate-800 rounded transition-colors" title="Refresh">
+                <i class="fa-solid fa-arrows-rotate" :class="loading ? 'fa-spin' : ''"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Printable Paper Container -->
+    <div class="max-w-5xl mx-auto report-paper rounded-lg border border-slate-200 p-8 md:p-12 text-slate-900">
+        
+        <!-- Loading State -->
+        <div x-show="loading" class="py-24 text-center">
+            <i class="fa-solid fa-circle-notch fa-spin text-4xl text-slate-400 mb-4"></i>
+            <h3 class="text-base font-semibold text-slate-700">Compiling Forensic Investigation Summary...</h3>
+            <p class="text-xs text-slate-500 mt-1">Aggregating canonical evidence, IOCs, socket telemetry, and Merkle root verification</p>
+        </div>
+
+        <!-- Error State -->
+        <div x-show="!loading && error" class="py-16 text-center" style="display: none;">
+            <i class="fa-solid fa-triangle-exclamation text-4xl text-red-500 mb-3"></i>
+            <h3 class="text-lg font-semibold text-slate-800">Failed to Load Investigation Report</h3>
+            <p class="text-xs text-red-600 mt-1" x-text="errorMessage"></p>
+            <button @click="loadReport()" class="mt-4 px-4 py-1.5 text-xs font-semibold text-white bg-slate-800 rounded hover:bg-slate-900">Retry</button>
+        </div>
+
+        <!-- Report Content -->
+        <div x-show="!loading && report" style="display: none;">
+            
+            <!-- 1. FORMAL REPORT HEADER -->
+            <header class="border-b border-slate-300 pb-6 mb-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1.5">
+                            <span class="inline-block w-2.5 h-2.5 rounded-full bg-slate-900"></span>
+                            <span class="text-xs font-bold tracking-widest text-slate-600 uppercase font-mono">JOCKY FORENSIC RUNTIME &bull; DFIR SUMMARY</span>
+                        </div>
+                        <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">JOCKY FORENSIC INVESTIGATION SUMMARY</h1>
+                        <p class="text-sm font-medium text-slate-600 mt-0.5">Executive Investigation &amp; Evidence Report</p>
+                    </div>
+                    <div class="text-right flex md:flex-col items-end justify-between md:justify-center">
+                        <div class="text-xs font-mono text-slate-500">CLASSIFICATION</div>
+                        <div class="text-xs font-bold text-slate-800 uppercase tracking-wider bg-slate-100 px-2.5 py-1 rounded border border-slate-200 mt-0.5">
+                            PRIVILEGED // DFIR REPORT
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Header Metadata Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-5 border-t border-slate-200 text-xs">
+                    <div>
+                        <span class="text-slate-500 uppercase tracking-wider font-semibold block text-[10px]">Case ID</span>
+                        <span class="font-mono font-bold text-slate-900 text-sm" x-text="report.header.case_id"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 uppercase tracking-wider font-semibold block text-[10px]">Investigation Date</span>
+                        <span class="font-mono text-slate-800" x-text="report.header.investigation_date"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 uppercase tracking-wider font-semibold block text-[10px]">Target Host / IP</span>
+                        <span class="font-mono text-slate-800 font-medium" x-text="report.header.target_host"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 uppercase tracking-wider font-semibold block text-[10px]">Platform</span>
+                        <span class="font-mono text-slate-800" x-text="report.header.platform"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 uppercase tracking-wider font-semibold block text-[10px]">Investigation Status</span>
+                        <span class="font-semibold text-slate-900 uppercase" x-text="report.header.investigation_status"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 uppercase tracking-wider font-semibold block text-[10px]">Integrity Status</span>
+                        <span class="font-semibold uppercase" :class="report.header.integrity_status === 'VERIFIED' ? 'text-emerald-700' : 'text-amber-700'" x-text="report.header.integrity_status"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 uppercase tracking-wider font-semibold block text-[10px]">Execution Duration</span>
+                        <span class="font-mono text-slate-800" x-text="report.header.execution_duration"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 uppercase tracking-wider font-semibold block text-[10px]">Lead Examiner</span>
+                        <span class="font-medium text-slate-800" x-text="report.header.examiner"></span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 2. EXECUTIVE STATUS & FINDINGS OVERVIEW -->
+            <section class="mb-8 bg-slate-50 rounded-lg p-5 border border-slate-200">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+                    <div>
+                        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">EXECUTIVE STATUS</h2>
+                        <div class="flex items-center gap-3 mt-1">
+                            <span class="text-lg font-bold uppercase text-slate-900" x-text="report.executive_status.status"></span>
+                            <span class="text-xs font-bold px-2 py-0.5 rounded border"
+                                  :class="report.executive_status.integrity_status === 'VERIFIED' ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-amber-50 text-amber-700 border-amber-300'">
+                                <i class="fa-solid fa-shield-halved mr-1"></i>
+                                <span x-text="report.executive_status.integrity_status"></span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs font-semibold text-slate-600 mr-1">FINDINGS BREAKDOWN:</span>
+                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-red-900 text-white" title="Critical Severity">CRITICAL: <span x-text="report.executive_status.counts.CRITICAL">0</span></span>
+                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-red-600 text-white" title="High Severity">HIGH: <span x-text="report.executive_status.counts.HIGH">0</span></span>
+                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-amber-500 text-white" title="Medium Severity">MEDIUM: <span x-text="report.executive_status.counts.MEDIUM">0</span></span>
+                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-600 text-white" title="Low Severity">LOW: <span x-text="report.executive_status.counts.LOW">0</span></span>
+                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-500 text-white" title="Informational">INFO: <span x-text="report.executive_status.counts.INFORMATIONAL">0</span></span>
+                    </div>
+                </div>
+                <!-- Case Title & Description -->
+                <div class="mt-3 text-xs text-slate-600">
+                    <span class="font-semibold text-slate-800">Case Scope:</span>
+                    <span x-text="report.header.title"></span>
+                    <span x-show="report.header.description" x-text="' &bull; ' + report.header.description"></span>
+                </div>
+            </section>
+
+            <!-- 3. KEY METRICS (6 KPI CARDS) -->
+            <section class="mb-8">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">KEY METRICS</h3>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                    <div class="bg-white p-3.5 rounded border border-slate-200 shadow-sm">
+                        <div class="text-[10px] uppercase font-bold text-slate-500">Evidence Items</div>
+                        <div class="text-xl font-bold font-mono text-slate-900 mt-1" x-text="report.key_metrics.evidence_items">0</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">Canonical items</div>
+                    </div>
+                    <div class="bg-white p-3.5 rounded border border-slate-200 shadow-sm">
+                        <div class="text-[10px] uppercase font-bold text-slate-500">IOC Findings</div>
+                        <div class="text-xl font-bold font-mono text-red-600 mt-1" x-text="report.key_metrics.ioc_findings">0</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">Detections flagged</div>
+                    </div>
+                    <div class="bg-white p-3.5 rounded border border-slate-200 shadow-sm">
+                        <div class="text-[10px] uppercase font-bold text-slate-500">Relationships</div>
+                        <div class="text-xl font-bold font-mono text-slate-900 mt-1" x-text="report.key_metrics.relationships">0</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">Cross-correlations</div>
+                    </div>
+                    <div class="bg-white p-3.5 rounded border border-slate-200 shadow-sm">
+                        <div class="text-[10px] uppercase font-bold text-slate-500">Timeline Events</div>
+                        <div class="text-xl font-bold font-mono text-slate-900 mt-1" x-text="report.key_metrics.timeline_events">0</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">Chronology records</div>
+                    </div>
+                    <div class="bg-white p-3.5 rounded border border-slate-200 shadow-sm">
+                        <div class="text-[10px] uppercase font-bold text-slate-500">Execution Time</div>
+                        <div class="text-xl font-bold font-mono text-slate-900 mt-1" x-text="report.key_metrics.execution_time">N/A</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">Collector runtime</div>
+                    </div>
+                    <div class="bg-white p-3.5 rounded border border-slate-200 shadow-sm">
+                        <div class="text-[10px] uppercase font-bold text-slate-500">Integrity Status</div>
+                        <div class="text-base font-bold uppercase mt-1 truncate" :class="report.key_metrics.integrity_status === 'VERIFIED' ? 'text-emerald-700' : 'text-amber-700'" x-text="report.key_metrics.integrity_status">VERIFIED</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">SHA-256 Merkle root</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. ARTIFACT-WISE ANALYSIS & SEVERITY DISTRIBUTION -->
+            <section class="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Artifact Distribution Chart & Table -->
+                <div class="bg-white rounded border border-slate-200 p-5 shadow-sm">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">ARTIFACT DISTRIBUTION</h3>
+                        <span class="text-[10px] font-mono text-slate-500" x-text="'Total: ' + report.key_metrics.evidence_items + ' items'"></span>
+                    </div>
+                    
+                    <div class="h-48 mb-4">
+                        <canvas id="artifactChart"></canvas>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border border-slate-200">
+                            <thead class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+                                <tr>
+                                    <th class="py-2 px-3">Artifact Type</th>
+                                    <th class="py-2 px-3 text-right">Collected</th>
+                                    <th class="py-2 px-3 text-right">Analyzed</th>
+                                    <th class="py-2 px-3 text-right">Findings</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <template x-for="cat in report.artifact_distribution.categories" :key="cat.type">
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="py-2 px-3 font-medium text-slate-800" x-text="cat.label"></td>
+                                        <td class="py-2 px-3 text-right font-mono" x-text="cat.collected"></td>
+                                        <td class="py-2 px-3 text-right font-mono" x-text="cat.analyzed"></td>
+                                        <td class="py-2 px-3 text-right font-mono font-semibold" :class="cat.findings > 0 ? 'text-red-600 font-bold' : 'text-slate-500'" x-text="cat.findings"></td>
+                                    </tr>
+                                </template>
+                                <tr x-show="report.artifact_distribution.categories.length === 0">
+                                    <td colspan="4" class="py-3 px-3 text-center text-slate-400 italic">No artifact evidence recorded for this case.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Severity Distribution Chart & Breakdown -->
+                <div class="bg-white rounded border border-slate-200 p-5 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">FINDING SEVERITY DISTRIBUTION</h3>
+                            <span class="text-[10px] font-mono text-slate-500" x-text="report.key_metrics.ioc_findings + ' findings'"></span>
+                        </div>
+
+                        <div class="h-48 mb-4 flex items-center justify-center">
+                            <canvas id="severityChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Severity Summary Cards -->
+                    <div class="grid grid-cols-5 gap-2 pt-3 border-t border-slate-200 text-center">
+                        <div class="p-1.5 rounded bg-red-50 border border-red-200">
+                            <span class="text-[9px] font-bold text-red-900 uppercase block">Critical</span>
+                            <span class="text-base font-bold font-mono text-red-900" x-text="report.severity_distribution.counts.CRITICAL">0</span>
+                        </div>
+                        <div class="p-1.5 rounded bg-red-50 border border-red-200">
+                            <span class="text-[9px] font-bold text-red-600 uppercase block">High</span>
+                            <span class="text-base font-bold font-mono text-red-600" x-text="report.severity_distribution.counts.HIGH">0</span>
+                        </div>
+                        <div class="p-1.5 rounded bg-amber-50 border border-amber-200">
+                            <span class="text-[9px] font-bold text-amber-700 uppercase block">Medium</span>
+                            <span class="text-base font-bold font-mono text-amber-700" x-text="report.severity_distribution.counts.MEDIUM">0</span>
+                        </div>
+                        <div class="p-1.5 rounded bg-emerald-50 border border-emerald-200">
+                            <span class="text-[9px] font-bold text-emerald-700 uppercase block">Low</span>
+                            <span class="text-base font-bold font-mono text-emerald-700" x-text="report.severity_distribution.counts.LOW">0</span>
+                        </div>
+                        <div class="p-1.5 rounded bg-slate-50 border border-slate-200">
+                            <span class="text-[9px] font-bold text-slate-600 uppercase block">Info</span>
+                            <span class="text-base font-bold font-mono text-slate-700" x-text="report.severity_distribution.counts.INFORMATIONAL">0</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. IOC FINDINGS (EXPLAINABLE DETECTIONS) -->
+            <section class="mb-8">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">KEY FINDINGS &amp; IOC DETECTIONS</h3>
+                        <p class="text-[11px] text-slate-500">Analytical findings correlated against canonical host and socket evidence</p>
+                    </div>
+                    <span class="text-xs font-mono font-semibold text-slate-600" x-text="report.ioc_findings.length + ' findings flagged'"></span>
+                </div>
+
+                <!-- Findings Table -->
+                <div class="overflow-x-auto border border-slate-200 rounded">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+                            <tr>
+                                <th class="py-2.5 px-3">Severity</th>
+                                <th class="py-2.5 px-3">Rule / Finding</th>
+                                <th class="py-2.5 px-3">Source Engine</th>
+                                <th class="py-2.5 px-3">Target Host</th>
+                                <th class="py-2.5 px-3">Timestamp</th>
+                                <th class="py-2.5 px-3">Evidence ID</th>
+                                <th class="py-2.5 px-3">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200">
+                            <template x-for="ioc in report.ioc_findings" :key="ioc.id">
+                                <tr class="hover:bg-slate-50">
+                                    <td class="py-2.5 px-3 font-bold">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase"
+                                              :class="{
+                                                  'bg-red-900': ioc.severity === 'CRITICAL',
+                                                  'bg-red-600': ioc.severity === 'HIGH',
+                                                  'bg-amber-600': ioc.severity === 'MEDIUM',
+                                                  'bg-emerald-600': ioc.severity === 'LOW',
+                                                  'bg-slate-600': ioc.severity === 'INFORMATIONAL' || ioc.severity === 'INFO'
+                                              }"
+                                              x-text="ioc.severity"></span>
+                                    </td>
+                                    <td class="py-2.5 px-3">
+                                        <div class="font-semibold text-slate-900" x-text="ioc.rule_name"></div>
+                                        <div class="text-[11px] text-slate-500 font-mono" x-text="ioc.rule_id"></div>
+                                        <div class="text-[11px] text-slate-700 mt-1" x-text="ioc.description"></div>
+                                        <!-- Supporting Evidence Callout -->
+                                        <div x-show="ioc.supporting_evidence && ioc.supporting_evidence.length > 0" class="mt-1.5 p-2 bg-slate-50 border border-slate-200 rounded text-[10px]">
+                                            <span class="font-semibold text-slate-700 block">Supporting Evidence:</span>
+                                            <template x-for="sup in ioc.supporting_evidence" :key="sup.evidence_id">
+                                                <div class="text-slate-600 mt-0.5 font-mono">
+                                                    &bull; <span class="font-semibold text-slate-800" x-text="sup.evidence_id.substring(0,8) + '...'"></span>: <span x-text="sup.summary"></span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </td>
+                                    <td class="py-2.5 px-3 text-slate-600" x-text="ioc.source"></td>
+                                    <td class="py-2.5 px-3 font-mono text-slate-800" x-text="ioc.host"></td>
+                                    <td class="py-2.5 px-3 font-mono text-slate-600 text-[11px]" x-text="ioc.timestamp"></td>
+                                    <td class="py-2.5 px-3 font-mono text-slate-700">
+                                        <template x-for="eid in ioc.evidence_ids" :key="eid">
+                                            <span class="inline-block px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] mr-1" x-text="eid.substring(0,8) + '...'" :title="eid"></span>
+                                        </template>
+                                        <span x-show="!ioc.evidence_ids || ioc.evidence_ids.length === 0" class="text-slate-400">None</span>
+                                    </td>
+                                    <td class="py-2.5 px-3">
+                                        <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-slate-100 text-slate-700 border border-slate-300 uppercase">CONFIRMED</span>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="report.ioc_findings.length === 0">
+                                <td colspan="7" class="py-6 px-4 text-center text-slate-500 italic bg-slate-50">
+                                    <i class="fa-solid fa-shield-heart text-emerald-600 text-lg mr-2"></i>
+                                    No IOC findings were generated for this investigation.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 6. PROCESS ANALYSIS -->
+            <section class="mb-8 page-break">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">PROCESS ANALYSIS</h3>
+                        <p class="text-[11px] text-slate-500">Telemetry acquired from host process tables and parent-child hierarchies</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs px-2 py-0.5 rounded font-mono font-bold"
+                              :class="report.process_analysis.collection_status === 'COMPLETE' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
+                              x-text="'STATUS: ' + report.process_analysis.collection_status"></span>
+                        <span class="text-xs font-mono font-semibold text-slate-600" x-text="report.process_analysis.total_processes + ' processes'"></span>
+                    </div>
+                </div>
+
+                <!-- Process Metrics Bar -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                    <div class="p-3 bg-slate-50 border border-slate-200 rounded">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase block">Total Processes</span>
+                        <span class="text-lg font-bold font-mono text-slate-900" x-text="report.process_analysis.total_processes">0</span>
+                    </div>
+                    <div class="p-3 bg-slate-50 border border-slate-200 rounded">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase block">Running Processes</span>
+                        <span class="text-lg font-bold font-mono text-slate-900" x-text="report.process_analysis.running_processes">0</span>
+                    </div>
+                    <div class="p-3 bg-slate-50 border border-slate-200 rounded">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase block">Suspicious Processes</span>
+                        <span class="text-lg font-bold font-mono text-red-600" x-text="report.process_analysis.suspicious_processes_count">0</span>
+                    </div>
+                    <div class="p-3 bg-slate-50 border border-slate-200 rounded">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase block">Process IOC Matches</span>
+                        <span class="text-lg font-bold font-mono text-slate-900" x-text="report.process_analysis.process_ioc_count">0</span>
+                    </div>
+                </div>
+
+                <!-- Process Table -->
+                <div class="overflow-x-auto border border-slate-200 rounded max-h-96">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200 sticky top-0">
+                            <tr>
+                                <th class="py-2 px-3">Process</th>
+                                <th class="py-2 px-3">PID</th>
+                                <th class="py-2 px-3">PPID</th>
+                                <th class="py-2 px-3">Executable Path</th>
+                                <th class="py-2 px-3">User</th>
+                                <th class="py-2 px-3">Status</th>
+                                <th class="py-2 px-3">Severity</th>
+                                <th class="py-2 px-3">Evidence ID</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <template x-for="p in report.process_analysis.processes" :key="p.evidence_id">
+                                <tr class="hover:bg-slate-50" :class="p.is_suspicious ? 'bg-red-50/40' : ''">
+                                    <td class="py-2 px-3 font-semibold text-slate-900" x-text="p.name"></td>
+                                    <td class="py-2 px-3 font-mono text-slate-700" x-text="p.pid"></td>
+                                    <td class="py-2 px-3 font-mono text-slate-500" x-text="p.ppid !== null ? p.ppid : 'N/A'"></td>
+                                    <td class="py-2 px-3 font-mono text-slate-600 max-w-xs truncate" :title="p.exe_path" x-text="p.exe_path"></td>
+                                    <td class="py-2 px-3 text-slate-600" x-text="p.username"></td>
+                                    <td class="py-2 px-3 uppercase text-[10px] font-semibold text-slate-600" x-text="p.status"></td>
+                                    <td class="py-2 px-3">
+                                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase"
+                                              :class="{
+                                                  'bg-red-700 text-white': p.severity === 'CRITICAL' || p.severity === 'HIGH',
+                                                  'bg-amber-600 text-white': p.severity === 'MEDIUM',
+                                                  'bg-slate-200 text-slate-700': p.severity === 'LOW' || p.severity === 'INFO'
+                                              }"
+                                              x-text="p.severity"></span>
+                                    </td>
+                                    <td class="py-2 px-3 font-mono text-slate-500 text-[10px]" x-text="p.evidence_id ? p.evidence_id.substring(0,8) + '...' : 'N/A'" :title="p.evidence_id"></td>
+                                </tr>
+                            </template>
+                            <tr x-show="!report.process_analysis.processes || report.process_analysis.processes.length === 0">
+                                <td colspan="8" class="py-4 px-3 text-center text-slate-400 italic">No process artifacts were collected in this investigation.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 7. NETWORK ANALYSIS -->
+            <section class="mb-8">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">NETWORK ANALYSIS</h3>
+                        <p class="text-[11px] text-slate-500">Live endpoint sockets, listening ports, and remote IP communication channels</p>
+                    </div>
+                    <span class="text-xs font-mono font-semibold text-slate-600" x-text="report.network_analysis.total_connections + ' connections'"></span>
+                </div>
+
+                <div x-show="report.network_analysis.available">
+                    <!-- Network Metrics Grid -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase block">Total Sockets</span>
+                            <span class="text-lg font-bold font-mono text-slate-900" x-text="report.network_analysis.total_connections">0</span>
+                        </div>
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase block">Unique Remote Endpoints</span>
+                            <span class="text-lg font-bold font-mono text-slate-900" x-text="report.network_analysis.unique_remote_endpoints">0</span>
+                        </div>
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase block">Unique Remote Ports</span>
+                            <span class="text-lg font-bold font-mono text-slate-900" x-text="report.network_analysis.unique_remote_ports">0</span>
+                        </div>
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase block">Suspicious Connections</span>
+                            <span class="text-lg font-bold font-mono text-red-600" x-text="report.network_analysis.suspicious_connections_count">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Network Connections Table -->
+                    <div class="overflow-x-auto border border-slate-200 rounded max-h-80">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200 sticky top-0">
+                                <tr>
+                                    <th class="py-2 px-3">Timestamp</th>
+                                    <th class="py-2 px-3">Local Endpoint</th>
+                                    <th class="py-2 px-3">Remote Endpoint</th>
+                                    <th class="py-2 px-3">Protocol</th>
+                                    <th class="py-2 px-3">Process</th>
+                                    <th class="py-2 px-3">Status</th>
+                                    <th class="py-2 px-3">Severity</th>
+                                    <th class="py-2 px-3">Evidence ID</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 font-mono">
+                                <template x-for="conn in report.network_analysis.connections" :key="conn.evidence_id">
+                                    <tr class="hover:bg-slate-50" :class="conn.is_suspicious ? 'bg-red-50/40' : ''">
+                                        <td class="py-2 px-3 text-[11px] text-slate-600" x-text="conn.timestamp ? conn.timestamp.substring(11,19) : 'N/A'"></td>
+                                        <td class="py-2 px-3 text-slate-800" x-text="conn.local_endpoint"></td>
+                                        <td class="py-2 px-3 text-slate-900 font-semibold" x-text="conn.remote_endpoint"></td>
+                                        <td class="py-2 px-3 text-slate-600" x-text="conn.protocol"></td>
+                                        <td class="py-2 px-3 text-slate-700 font-sans" x-text="conn.process_name"></td>
+                                        <td class="py-2 px-3 uppercase text-[10px] text-slate-600" x-text="conn.status"></td>
+                                        <td class="py-2 px-3 font-sans">
+                                            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase"
+                                                  :class="conn.severity === 'INFORMATIONAL' ? 'bg-slate-100 text-slate-600' : 'bg-red-600 text-white'"
+                                                  x-text="conn.severity"></span>
+                                        </td>
+                                        <td class="py-2 px-3 text-[10px] text-slate-400" x-text="conn.evidence_id.substring(0,8) + '...'" :title="conn.evidence_id"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div x-show="!report.network_analysis.available" class="p-6 text-center text-slate-500 bg-slate-50 border border-slate-200 rounded italic text-xs">
+                    No network artifacts were collected in this investigation.
+                </div>
+            </section>
+
+            <!-- 8. EVENT / LOG ANALYSIS -->
+            <section class="mb-8">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">EVENT &amp; LOG ANALYSIS</h3>
+                        <p class="text-[11px] text-slate-500">Security event streams, engine execution audits, and system log records</p>
+                    </div>
+                    <span class="text-xs font-mono font-semibold text-slate-600" x-text="report.event_analysis.total_events + ' records'"></span>
+                </div>
+
+                <div x-show="report.event_analysis.available">
+                    <div class="overflow-x-auto border border-slate-200 rounded max-h-72">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200 sticky top-0">
+                                <tr>
+                                    <th class="py-2 px-3">Timestamp</th>
+                                    <th class="py-2 px-3">Source Channel</th>
+                                    <th class="py-2 px-3">Event ID / Type</th>
+                                    <th class="py-2 px-3">Description</th>
+                                    <th class="py-2 px-3">Severity</th>
+                                    <th class="py-2 px-3">Evidence ID</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <template x-for="evt in report.event_analysis.events" :key="evt.evidence_id + evt.timestamp">
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="py-2 px-3 font-mono text-[11px] text-slate-600" x-text="evt.timestamp"></td>
+                                        <td class="py-2 px-3 font-medium text-slate-800" x-text="evt.source"></td>
+                                        <td class="py-2 px-3 font-mono text-slate-700" x-text="evt.event_id"></td>
+                                        <td class="py-2 px-3 text-slate-700 max-w-md truncate" :title="evt.description" x-text="evt.description"></td>
+                                        <td class="py-2 px-3">
+                                            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-700 border uppercase" x-text="evt.severity"></span>
+                                        </td>
+                                        <td class="py-2 px-3 font-mono text-slate-400 text-[10px]" x-text="evt.evidence_id ? evt.evidence_id.substring(0,8) + '...' : 'N/A'"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div x-show="!report.event_analysis.available" class="p-6 text-center text-slate-500 bg-slate-50 border border-slate-200 rounded italic text-xs">
+                    No event log artifacts were collected in this investigation.
+                </div>
+            </section>
+
+            <!-- 9. FILE ARTIFACT ANALYSIS -->
+            <section class="mb-8">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">FILE ARTIFACT ANALYSIS</h3>
+                        <p class="text-[11px] text-slate-500">Forensic file metadata, SHA-256 hashes, and disk residency verification</p>
+                    </div>
+                    <span class="text-xs font-mono font-semibold text-slate-600" x-text="report.file_analysis.total_files + ' files'"></span>
+                </div>
+
+                <div x-show="report.file_analysis.available">
+                    <div class="overflow-x-auto border border-slate-200 rounded">
+                        <table class="w-full text-left text-xs font-mono">
+                            <thead class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200 font-sans">
+                                <tr>
+                                    <th class="py-2 px-3">Path</th>
+                                    <th class="py-2 px-3">SHA-256 Hash</th>
+                                    <th class="py-2 px-3">Timestamp</th>
+                                    <th class="py-2 px-3">Source</th>
+                                    <th class="py-2 px-3">Severity</th>
+                                    <th class="py-2 px-3">Evidence ID</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <template x-for="f in report.file_analysis.files" :key="f.evidence_id">
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="py-2 px-3 font-semibold text-slate-900 truncate max-w-xs" :title="f.path" x-text="f.path"></td>
+                                        <td class="py-2 px-3 text-slate-600 text-[11px]" x-text="f.hash"></td>
+                                        <td class="py-2 px-3 text-slate-500 text-[11px]" x-text="f.timestamp"></td>
+                                        <td class="py-2 px-3 text-slate-600 font-sans" x-text="f.source"></td>
+                                        <td class="py-2 px-3 font-sans">
+                                            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-slate-100 text-slate-700" x-text="f.severity"></span>
+                                        </td>
+                                        <td class="py-2 px-3 text-slate-400 text-[10px]" x-text="f.evidence_id.substring(0,8) + '...'"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div x-show="!report.file_analysis.available" class="p-6 text-center text-slate-500 bg-slate-50 border border-slate-200 rounded italic text-xs">
+                    No discrete file artifacts were collected in this investigation. (Executable paths captured via process telemetry).
+                </div>
+            </section>
+
+            <!-- 10. REGISTRY ARTIFACT ANALYSIS -->
+            <section class="mb-8">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">REGISTRY ARTIFACT ANALYSIS</h3>
+                        <p class="text-[11px] text-slate-500">Windows registry hive keys, persistence values, and autostart entries</p>
+                    </div>
+                </div>
+
+                <div x-show="report.registry_analysis.available">
+                    <div class="overflow-x-auto border border-slate-200 rounded">
+                        <table class="w-full text-left text-xs font-mono">
+                            <thead class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200 font-sans">
+                                <tr>
+                                    <th class="py-2 px-3">Key Path</th>
+                                    <th class="py-2 px-3">Value Name</th>
+                                    <th class="py-2 px-3">Value Data</th>
+                                    <th class="py-2 px-3">Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <template x-for="r in report.registry_analysis.keys" :key="r.evidence_id">
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="py-2 px-3 font-semibold text-slate-900" x-text="r.key"></td>
+                                        <td class="py-2 px-3 text-slate-700" x-text="r.value_name || 'N/A'"></td>
+                                        <td class="py-2 px-3 text-slate-600 truncate max-w-xs" x-text="r.value_data || 'N/A'"></td>
+                                        <td class="py-2 px-3 text-slate-500 text-[11px]" x-text="r.timestamp"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Explicit requirement: If Registry not collected, do not pretend - mark Not Available -->
+                <div x-show="!report.registry_analysis.available" class="p-6 text-center text-slate-500 bg-slate-50 border border-slate-200 rounded italic text-xs">
+                    <i class="fa-solid fa-folder-minus text-slate-400 mr-2"></i>
+                    Not Available in Current Investigation (Registry collector was not targeted for this scan profile).
+                </div>
+            </section>
+
+            <!-- 11. CORRELATION ANALYSIS (CROSS-ARTIFACT RELATIONSHIPS) -->
+            <section class="mb-8 page-break">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">EVIDENCE CORRELATION</h3>
+                        <p class="text-[11px] text-slate-500">Cross-domain graph relationships linking processes, parentage, and network sockets</p>
+                    </div>
+                    <span class="text-xs font-mono font-semibold text-slate-600" x-text="report.correlation_analysis.total_relationships + ' correlations'"></span>
+                </div>
+
+                <div x-show="report.correlation_analysis.available">
+                    <!-- Correlation Relationship Distribution Chart -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div class="p-4 bg-slate-50 border border-slate-200 rounded md:col-span-1">
+                            <span class="text-[10px] font-bold uppercase text-slate-500 block mb-2">Relationship Breakdown</span>
+                            <div class="space-y-2">
+                                <template x-for="(count, rtype) in report.correlation_analysis.type_counts" :key="rtype">
+                                    <div class="flex items-center justify-between text-xs">
+                                        <span class="font-mono text-slate-700 font-medium" x-text="rtype"></span>
+                                        <span class="font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200" x-text="count"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        <div class="p-4 bg-white border border-slate-200 rounded md:col-span-2">
+                            <h4 class="text-[10px] font-bold uppercase text-slate-500 mb-2">Conceptual Correlation Model</h4>
+                            <div class="p-3 bg-slate-900 text-slate-100 rounded font-mono text-xs whitespace-pre overflow-x-auto leading-relaxed">
+PROCESS [Parent]
+  └── SPAWNED_CHILD ──> PROCESS [Child]
+                          └── BOUND_SOCKET / OPENED_SOCKET ──> NETWORK SOCKET
+                                                                 └── IOC MATCH
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Relationships Table -->
+                    <div class="overflow-x-auto border border-slate-200 rounded max-h-72">
+                        <table class="w-full text-left text-xs font-mono">
+                            <thead class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200 font-sans">
+                                <tr>
+                                    <th class="py-2 px-3">Relationship Type</th>
+                                    <th class="py-2 px-3">Confidence</th>
+                                    <th class="py-2 px-3">Reason / Description</th>
+                                    <th class="py-2 px-3">Source Evidence</th>
+                                    <th class="py-2 px-3">Target Evidence</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <template x-for="rel in report.correlation_analysis.relationships" :key="rel.id">
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="py-2 px-3 font-semibold text-slate-900" x-text="rel.relationship_type"></td>
+                                        <td class="py-2 px-3 text-slate-600" x-text="(rel.confidence * 100).toFixed(0) + '%'"></td>
+                                        <td class="py-2 px-3 font-sans text-slate-700 max-w-sm truncate" :title="rel.reason" x-text="rel.reason"></td>
+                                        <td class="py-2 px-3 text-[10px] text-slate-500" x-text="rel.source_evidence_id.substring(0,8) + '...'" :title="rel.source_evidence_id"></td>
+                                        <td class="py-2 px-3 text-[10px] text-slate-500" x-text="rel.target_evidence_id.substring(0,8) + '...'" :title="rel.target_evidence_id"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div x-show="!report.correlation_analysis.available" class="p-6 text-center text-slate-500 bg-slate-50 border border-slate-200 rounded italic text-xs">
+                    No cross-artifact relationships were established for this case.
+                </div>
+            </section>
+
+            <!-- 12. INVESTIGATION TIMELINE -->
+            <section class="mb-8">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">INVESTIGATION TIMELINE</h3>
+                        <p class="text-[11px] text-slate-500">Chronological reconstruction of host execution and telemetry events</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-mono font-semibold text-slate-600" x-text="report.timeline_summary.total_events + ' total events'"></span>
+                        <a href="/timeline" class="text-xs text-blue-600 hover:text-blue-800 font-semibold no-print">View Full Timeline &rarr;</a>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto border border-slate-200 rounded max-h-80">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200 sticky top-0">
+                            <tr>
+                                <th class="py-2 px-3">Timestamp</th>
+                                <th class="py-2 px-3">Artifact Type</th>
+                                <th class="py-2 px-3">Event Summary</th>
+                                <th class="py-2 px-3">Source</th>
+                                <th class="py-2 px-3">Severity</th>
+                                <th class="py-2 px-3">Evidence ID</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <template x-for="tl in report.timeline_summary.events" :key="tl.id">
+                                <tr class="hover:bg-slate-50">
+                                    <td class="py-2 px-3 font-mono text-[11px] text-slate-600 whitespace-nowrap" x-text="tl.timestamp"></td>
+                                    <td class="py-2 px-3 font-mono font-semibold text-slate-800 text-[11px]" x-text="tl.event_type"></td>
+                                    <td class="py-2 px-3 font-medium text-slate-900 max-w-md truncate" :title="tl.title + ' ' + tl.description" x-text="tl.title"></td>
+                                    <td class="py-2 px-3 text-slate-600" x-text="tl.source"></td>
+                                    <td class="py-2 px-3">
+                                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase"
+                                              :class="{
+                                                  'bg-red-700 text-white': tl.severity === 'CRITICAL' || tl.severity === 'HIGH',
+                                                  'bg-amber-600 text-white': tl.severity === 'MEDIUM',
+                                                  'bg-slate-200 text-slate-700': tl.severity === 'LOW' || tl.severity === 'INFO'
+                                              }"
+                                              x-text="tl.severity"></span>
+                                    </td>
+                                    <td class="py-2 px-3 font-mono text-[10px] text-slate-400" x-text="tl.evidence_id ? tl.evidence_id.substring(0,8) + '...' : 'N/A'"></td>
+                                </tr>
+                            </template>
+                            <tr x-show="!report.timeline_summary.events || report.timeline_summary.events.length === 0">
+                                <td colspan="6" class="py-4 px-3 text-center text-slate-400 italic">No timeline events recorded.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 13. EVIDENCE INTEGRITY & MERKLE SEAL -->
+            <section class="mb-8 p-5 bg-slate-50 border border-slate-200 rounded">
+                <div class="flex items-center justify-between mb-3 pb-3 border-b border-slate-200">
+                    <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">EVIDENCE INTEGRITY VERIFICATION</h3>
+                        <p class="text-[11px] text-slate-500">Cryptographic tamper-evidence proof across all canonical records</p>
+                    </div>
+                    <span class="px-2.5 py-1 text-xs font-bold rounded uppercase tracking-wider"
+                          :class="report.integrity.status === 'VERIFIED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'">
+                        <i class="fa-solid fa-lock mr-1.5"></i> <span x-text="'INTEGRITY: ' + report.integrity.status"></span>
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+                    <div class="p-3 bg-white border border-slate-200 rounded">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase block font-sans">Root SHA-256 Digest</span>
+                        <div class="text-xs font-bold text-slate-900 break-all mt-1" x-text="report.integrity.root_hash"></div>
+                    </div>
+                    <div class="p-3 bg-white border border-slate-200 rounded font-sans">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase block">Verification Manifest</span>
+                        <p class="text-xs text-slate-700 mt-1" x-text="report.integrity.verification_result"></p>
+                        <p class="text-[10px] text-slate-500 mt-0.5" x-text="'Total items cryptographically sealed: ' + report.integrity.total_items_verified"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 14. COLLECTION LIMITATIONS (REQUIRED) -->
+            <section class="mb-8 p-5 bg-amber-50/60 border border-amber-200 rounded">
+                <div class="flex items-center gap-2 mb-2">
+                    <i class="fa-solid fa-circle-info text-amber-700 text-sm"></i>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-amber-900">COLLECTION LIMITATIONS</h3>
+                </div>
+                <p class="text-xs text-amber-900 mb-3" x-text="report.collection_limitations.message"></p>
+
+                <div x-show="report.collection_limitations.limitations && report.collection_limitations.limitations.length > 0">
+                    <table class="w-full text-left text-xs border border-amber-200 bg-white rounded overflow-hidden">
+                        <thead class="bg-amber-100/70 text-amber-900 font-semibold border-b border-amber-200">
+                            <tr>
+                                <th class="py-2 px-3">Artifact Domain</th>
+                                <th class="py-2 px-3">Status</th>
+                                <th class="py-2 px-3">Reason / Scope Limitation</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-amber-100">
+                            <template x-for="lim in report.collection_limitations.limitations" :key="lim.artifact + lim.reason">
+                                <tr>
+                                    <td class="py-2 px-3 font-semibold text-slate-900" x-text="lim.artifact"></td>
+                                    <td class="py-2 px-3">
+                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800" x-text="lim.status"></span>
+                                    </td>
+                                    <td class="py-2 px-3 text-slate-700" x-text="lim.reason"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 15. EXECUTIVE CONCLUSION -->
+            <section class="mb-8 p-5 bg-slate-900 text-white rounded-lg">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">EXECUTIVE CONCLUSION</h3>
+                <p class="text-xs md:text-sm leading-relaxed text-slate-200" x-text="report.executive_conclusion"></p>
+                <div class="mt-4 pt-3 border-t border-slate-700 flex flex-wrap items-center justify-between text-[11px] text-slate-400">
+                    <span>Generated by JOCKY Forensic Investigation Platform</span>
+                    <span>Court-admissible evidentiary chain preserved</span>
+                </div>
+            </section>
+
+            <!-- 16. FOOTER WITH TECHNICAL METHODOLOGY LINK -->
+            <footer class="pt-6 border-t border-slate-300 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-3">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-file-shield text-slate-700"></i>
+                    <span>JOCKY Investigation Summary Report &bull; Case <span class="font-mono font-semibold" x-text="report.header.case_id"></span></span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <a :href="'/investigations/' + caseId + '/export-report'" target="_blank" class="font-semibold text-blue-600 hover:text-blue-800">
+                        View Technical Methodology Report &rarr;
+                    </a>
+                </div>
+            </footer>
+
+        </div>
+    </div>
+
+    <!-- Script: Data Fetching & Chart Rendering -->
+    <script>
+        function summaryReportApp(caseId) {
+            return {
+                caseId: caseId,
+                loading: true,
+                error: false,
+                errorMessage: '',
+                report: null,
+
+                async loadReport() {
+                    this.loading = true;
+                    this.error = false;
+                    try {
+                        const token = localStorage.getItem('token') || '';
+                        const headers = {};
+                        if (token) {
+                            headers['Authorization'] = 'Bearer ' + token;
+                        }
+
+                        const res = await fetch('/api/v1/investigations/' + this.caseId + '/summary-report', {
+                            headers: headers
+                        });
+
+                        if (!res.ok) {
+                            const errData = await res.json().catch(() => ({}));
+                            throw new Error(errData.detail || 'HTTP error ' + res.status);
+                        }
+
+                        this.report = await res.json();
+                        this.loading = false;
+
+                        // Render charts next tick after DOM update
+                        setTimeout(() => this.renderCharts(), 100);
+                    } catch (err) {
+                        console.error('Error loading summary report:', err);
+                        this.loading = false;
+                        this.error = true;
+                        this.errorMessage = err.message || 'Failed to load report data';
+                    }
+                },
+
+                renderCharts() {
+                    if (!this.report) return;
+
+                    // 1. Artifact Distribution Bar Chart
+                    const artCtx = document.getElementById('artifactChart');
+                    if (artCtx && this.report.artifact_distribution) {
+                        const existingChart = Chart.getChart(artCtx);
+                        if (existingChart) existingChart.destroy();
+
+                        new Chart(artCtx, {
+                            type: 'bar',
+                            data: {
+                                labels: this.report.artifact_distribution.chart.labels,
+                                datasets: [{
+                                    label: 'Evidence Items',
+                                    data: this.report.artifact_distribution.chart.data,
+                                    backgroundColor: '#0f172a',
+                                    borderRadius: 4,
+                                    barThickness: 24,
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        backgroundColor: '#0f172a',
+                                        titleFont: { size: 11 },
+                                        bodyFont: { size: 11 },
+                                        padding: 8,
+                                    }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: { precision: 0, font: { size: 10 } },
+                                        grid: { color: '#f1f5f9' }
+                                    },
+                                    x: {
+                                        ticks: { font: { size: 10 } },
+                                        grid: { display: false }
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    // 2. Severity Distribution Doughnut Chart
+                    const sevCtx = document.getElementById('severityChart');
+                    if (sevCtx && this.report.severity_distribution) {
+                        const existingChart = Chart.getChart(sevCtx);
+                        if (existingChart) existingChart.destroy();
+
+                        const sevData = this.report.severity_distribution.chart;
+                        const hasData = sevData.data.some(v => v > 0);
+
+                        new Chart(sevCtx, {
+                            type: 'doughnut',
+                            data: {
+                                labels: sevData.labels,
+                                datasets: [{
+                                    data: hasData ? sevData.data : [1],
+                                    backgroundColor: hasData ? sevData.colors : ['#e2e8f0'],
+                                    borderWidth: 2,
+                                    borderColor: '#ffffff',
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                cutout: '65%',
+                                plugins: {
+                                    legend: {
+                                        position: 'right',
+                                        labels: { boxWidth: 10, font: { size: 10 } }
+                                    },
+                                    tooltip: {
+                                        enabled: hasData,
+                                        callbacks: {
+                                            label: function(ctx) {
+                                                return `${ctx.label}: ${ctx.raw} finding(s)`;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+            };
+        }
+    </script>
+</body>
+</html>

@@ -182,6 +182,9 @@ html {
         </div>
         
         <div class="flex flex-wrap gap-2.5 font-hud" x-show="reportLoaded">
+            <a :href="'/investigations/' + selectedCase + '/report'" target="_blank" class="px-3.5 py-2 bg-cyan-950/60 hover:bg-cyan-900/60 text-cyber-cyan border border-cyber-cyan rounded text-xs transition flex items-center gap-1.5" title="Open executive DFIR summary report">
+                <i class="fa-solid fa-file-lines"></i> SUMMARY REPORT
+            </a>
             <button @click="downloadHtml()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-cyber-cyan border border-cyber-cyan/40 rounded text-xs transition">
                 <i class="fa-solid fa-file-code mr-1"></i> DOWNLOAD HTML
             </button>

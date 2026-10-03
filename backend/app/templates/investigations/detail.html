@@ -33,9 +33,17 @@
         
         <!-- Action Buttons -->
         <div class="flex flex-wrap items-center gap-2.5 font-hud">
-            <button @click="generateReport()" class="cyber-btn cyber-btn-cyan text-xs py-2 px-3.5">
-                <i class="fa-solid fa-file-shield mr-1"></i> EXPORT REPORT
+            <a :href="'/investigations/' + id + '/report'" class="cyber-btn cyber-btn-cyan text-xs py-2 px-3.5 flex items-center gap-1.5" title="View executive DFIR summary report">
+                <i class="fa-solid fa-file-lines text-xs"></i> VIEW SUMMARY REPORT
+            </a>
+            
+            <button @click="exportSummaryReport()" class="cyber-btn cyber-btn-green text-xs py-2 px-3.5 flex items-center gap-1.5" title="Print or save executive summary report as PDF">
+                <i class="fa-solid fa-print text-xs"></i> EXPORT SUMMARY
             </button>
+            
+            <a :href="'/investigations/' + id + '/export-report'" target="_blank" class="cyber-btn cyber-btn-dark text-xs py-2 px-3.5 flex items-center gap-1.5" title="View technical methodology and formal dossier">
+                <i class="fa-solid fa-file-contract text-xs text-cyber-cyan"></i> TECHNICAL DOSSIER
+            </a>
             
             <div class="relative" x-data="{ open: false }">
                 <button @click="open = !open" @click.away="open = false" 
@@ -1280,6 +1288,10 @@ EXPORT REPORT;
         generateReport() {
             window.dispatchEvent(new CustomEvent('toast', { detail: { message: `Compiling full forensic report...`, type: 'info' } }));
             setTimeout(() => window.location.href = '/reports', 1200);
+        },
+
+        exportSummaryReport() {
+            window.open('/investigations/' + this.id + '/report', '_blank');
         }
     };
 }

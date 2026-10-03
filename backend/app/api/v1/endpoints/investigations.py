@@ -238,3 +238,39 @@ async def correlate_live_endpoint(
     return await correlate_live_for_investigation(db, id)
 
 
+@router.get("/{id}/summary-report")
+async def get_investigation_summary_report(
+    id: str,
+    token: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    request: Request = None,
+):
+    """
+    Retrieve executive DFIR forensic summary report data for the given investigation.
+    """
+    from app.services.investigation_summary_service import get_investigation_summary_data
+    from app.core.security import decode_access_token
+
+    user = None
+    auth_header = request.headers.get("Authorization") if request else None
+    raw_token = None
+    if auth_header and auth_header.startswith("Bearer "):
+        raw_token = auth_header.split(" ", 1)[1]
+    elif token:
+        raw_token = token
+    elif request and "jocky_token" in request.cookies:
+        raw_token = request.cookies.get("jocky_token")
+
+    if raw_token:
+        payload = decode_access_token(raw_token)
+        if payload and "sub" in payload:
+            res = await db.execute(select(User).filter(User.email == payload["sub"]))
+            user = res.scalars().first()
+
+    examiner_name = user.full_name if user else "JOCKY Forensic Analyst"
+    data = await get_investigation_summary_data(db, id, examiner=examiner_name)
+    if not data:
+        raise HTTPException(status_code=404, detail="Investigation not found")
+    return data
+
+

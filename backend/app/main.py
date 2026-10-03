@@ -91,6 +91,10 @@ async def investigations_page(request: Request):
 async def investigation_detail_page(request: Request, id: str):
     return templates.TemplateResponse(request=request, name="investigations/detail.html", context={"id": id})
 
+@app.get("/investigations/{id}/report")
+async def investigation_summary_report_page(request: Request, id: str):
+    return templates.TemplateResponse(request=request, name="investigations/summary_report.html", context={"id": id})
+
 @app.get("/editor")
 async def editor_page(request: Request):
     return templates.TemplateResponse(request=request, name="editor.html")
